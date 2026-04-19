@@ -1,140 +1,163 @@
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
-Brian Pause <bppause@gmail.com>
-4:54 PM (0 minutes ago)
-to me
+const app = express();
 
-window.APP_CONFIG = {
-  supabase: {
-    url: "https://naspwcdypjwzbcmsohpt.supabase.co",
-    anonKey: "sb_publishable_XMIfEG3Gk4QBWyNtX2QeZA_ILHrtwG8"
-  },
+// ✅ Use Render port
+const PORT = process.env.PORT || 3000;
 
-  auth: {
-    providers: {
-      google: true,
-      apple: false
-    },
-    redirectTo: window.location.origin
-  },
+// Fix __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  app: {
-    appName: "Morroskai Pricing App",
-    storageKey: "morroskai_pricing_settings",
-    defaultViewYear: 2026
-  },
+// ✅ Middleware
+app.use(express.json());
 
-  defaults: {
-    baseRateCOP: 400000,
-    fxRate: 3500,
-    cohostSharePct: 85,
-    flatDiscountPct: 15,
-    airbnbFeePct: 20,
-    compSearchLocation: "Playa Manzanillo, Cartagena, Colombia",
-    sameBuildingOnly: true
-  },
+// ✅ Serve static files (HTML, CSS, JS)
+app.use(express.static(__dirname));
 
-  property: {
-    building: "Morros Kai",
-    unit: "317",
-    neighborhood: "Playa Manzanillo",
-    city: "Cartagena",
-    country: "Colombia",
-    bedrooms: 2,
-    bathrooms: 2,
-    maxGuests: 6,
-    floorArea: "",
-    floor: "",
-    rating: 5.0,
-    amenities: [
-      "Beach access",
-      "Pool",
-      "Gym",
-      "Parking",
-      "A/C",
-      "WiFi",
-      "Washer/Dryer",
-      "Kitchen",
-      "Smart TV"
-    ],
-    notes: "Newest building in Serena del Mar. Direct beach access."
-  },
 
-  years: [
-    {
-      year: 2026,
-      inflation: 6.3,
-      regularOccupancyPct: 55,
-      peakOccupancyPct: 78,
-      monthlyOperatingCostsCOP: 9800000,
-      monthlyOtherIncomeCOP: 1000000,
-      lowMonths: [4, 7, 8, 9],
-      overrides: {
-        baseRateCOP: null,
-        fxRate: 3500,
-        cohostSharePct: null,
-        flatDiscountPct: null,
-        airbnbFeePct: null
-      },
-      peaks: [
-        { start: "2026-04-01", end: "2026-04-05", markupPct: 30, label: "Easter" },
-        { start: "2026-06-15", end: "2026-08-01", markupPct: 30, label: "Summer High Season" },
-        { start: "2026-10-08", end: "2026-10-11", markupPct: 30, label: "Columbus Day" },
-        { start: "2026-11-12", end: "2026-11-15", markupPct: 30, label: "Independence" },
-        { start: "2026-12-01", end: "2026-12-29", markupPct: 30, label: "December Season" },
-        { start: "2026-12-30", end: "2027-01-02", markupPct: 200, label: "New Year" }
-      ]
-    },
-    {
-      year: 2027,
-      inflation: 3.7,
-      regularOccupancyPct: 55,
-      peakOccupancyPct: 78,
-      monthlyOperatingCostsCOP: 9800000,
-      monthlyOtherIncomeCOP: 1000000,
-      lowMonths: [4, 7, 8, 9],
-      overrides: {
-        baseRateCOP: null,
-        fxRate: 3500,
-        cohostSharePct: null,
-        flatDiscountPct: null,
-        airbnbFeePct: null
-      },
-      peaks: [
-        { start: "2027-01-03", end: "2027-01-20", markupPct: 100, label: "January High Demand" },
-        { start: "2027-04-14", end: "2027-04-18", markupPct: 30, label: "Easter" },
-        { start: "2027-06-15", end: "2027-08-01", markupPct: 30, label: "Summer High Season" },
-        { start: "2027-10-11", end: "2027-10-12", markupPct: 30, label: "Columbus Day" },
-        { start: "2027-11-11", end: "2027-11-15", markupPct: 30, label: "Independence" },
-        { start: "2027-12-01", end: "2027-12-29", markupPct: 30, label: "December Season" },
-        { start: "2027-12-30", end: "2028-01-02", markupPct: 200, label: "New Year" }
-      ]
+// ======================================================
+// 🔐 Dynamic app-config.js (from Render env variables)
+// ======================================================
+app.get("/app-config.js", (req, res) => {
+  res.type("application/javascript").send(`
+    window.APP_CONFIG = {
+      SUPABASE_URL: "${process.env.SUPABASE_URL || ""}",
+      SUPABASE_ANON_KEY: "${process.env.SUPABASE_ANON_KEY || ""}"
+    };
+  `);
+});
+
+
+// ======================================================
+// 🏠 Main app route
+// ======================================================
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "morroskai_pricing_auth_full.html"));
+});
+
+
+// ======================================================
+// ❤️ Health check
+// ======================================================
+app.get("/api/health", (req, res) => {
+  res.json({
+    ok: true,
+    env: {
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_ANON_KEY,
+      hasApify: !!process.env.APIFY_SYNC_URL
     }
-  ],
+  });
+});
 
-  fallbackComps: [
-    {
-      name: "Morros Kai #1538",
-      url: "https://www.airbnb.com/rooms/1538124273490670394",
-      rate_usd: 115,
-      rating: 5.0,
-      reviews: null,
-      found: true
-    },
-    {
-      name: "Morros Kai Manzanillo",
-      url: "https://www.airbnb.com/rooms/1574666192917720867",
-      rate_usd: 95,
-      rating: null,
-      reviews: null,
-      found: true
-    },
-    {
-      name: "Ocean View 2 Suites",
-      url: "https://www.airbnb.com/rooms/1632624456085695382",
-      rate_usd: 110,
-      rating: null,
-      reviews: null,
-      found: true
+
+// ======================================================
+// 🧠 Comps API (Apify proxy)
+// ======================================================
+app.post("/api/comps/search", async (req, res) => {
+  try {
+    console.log("🔍 Fetching comps...");
+
+    const {
+      compSearchLocation,
+      property,
+      stayWindow
+    } = req.body || {};
+
+    if (!process.env.APIFY_SYNC_URL) {
+      throw new Error("APIFY_SYNC_URL not set");
     }
-  ]
-};
+
+    const location =
+      compSearchLocation ||
+      property?.searchLocation ||
+      "Cartagena, Colombia";
+
+    const payload = {
+      location: location,
+      maxItems: 10
+    };
+
+    console.log("📡 Sending to Apify:", payload);
+
+    const response = await fetch(process.env.APIFY_SYNC_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const raw = await response.json();
+
+    console.log("📦 RAW APIFY:", raw);
+
+    let items = [];
+
+    if (Array.isArray(raw)) {
+      items = raw;
+    } else if (Array.isArray(raw?.items)) {
+      items = raw.items;
+    } else if (Array.isArray(raw?.data)) {
+      items = raw.data;
+    }
+
+    if (!items.length) {
+      return res.json({
+        comps: [],
+        provider: "apify",
+        search_summary: "No listings returned",
+        market_avg_usd: null
+      });
+    }
+
+    const comps = items.slice(0, 10).map((it, i) => ({
+      name: it.name || it.title || `Listing ${i + 1}`,
+      url: it.url || it.link || "",
+      rate_usd:
+        it.price?.amount ||
+        it.price ||
+        it.pricing?.rate ||
+        null,
+      rating: it.rating || it.stars || null,
+      reviews: it.reviews || it.reviewsCount || null,
+      bedrooms: it.bedrooms || null,
+      bathrooms: it.bathrooms || null,
+      found: true
+    }));
+
+    const valid = comps.filter(c => c.rate_usd);
+    const avg = valid.length
+      ? valid.reduce((s, c) => s + c.rate_usd, 0) / valid.length
+      : null;
+
+    res.json({
+      comps,
+      provider: "apify",
+      search_summary: `Live comps for ${location}`,
+      market_avg_usd: avg
+    });
+
+  } catch (err) {
+    console.error("❌ ERROR:", err.message);
+
+    res.status(500).json({
+      error: true,
+      message: err.message
+    });
+  }
+});
+
+
+// ======================================================
+// 🚀 Start server
+// ======================================================
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log("🔐 Supabase URL:", !!process.env.SUPABASE_URL);
+  console.log("🔐 Supabase Key:", !!process.env.SUPABASE_ANON_KEY);
+  console.log("🔗 Apify URL:", !!process.env.APIFY_SYNC_URL);
+});
