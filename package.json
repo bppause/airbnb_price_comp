@@ -1,6 +1,6 @@
 {
   "name": "@bppau/morroskai-pricing-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Morros Kai pricing app with local server and Airbnb comps refresh",
   "type": "module",
   "main": "server.js",
