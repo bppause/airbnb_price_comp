@@ -3,6 +3,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import "dotenv/config";
 
+
+
 const app = express();
 
 // IMPORTANT for Render / cloud deploy
@@ -11,6 +13,14 @@ const PORT = process.env.PORT || 3000;
 // Resolve paths (ESM)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+app.get("/app-config.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.send(`
+    window.SUPABASE_URL = "${process.env.SUPABASE_URL || ""}";
+    window.SUPABASE_ANON_KEY = "${process.env.SUPABASE_ANON_KEY || ""}";
+  `);
+});
 
 // Middleware
 app.use(express.json());
