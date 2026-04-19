@@ -2,8 +2,10 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const SUPABASE_URL = "https://naspwcdypjwzbcmsohpt.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_XMIfEG3Gk4QBWyNtX2QeZA_ILHrtwG8";
+
+
+window.SUPABASE_URL = "https://naspwcdypjwzbcmsohpt.supabase.co";
+window.SUPABASE_ANON_KEY = "sb_publishable_XMIfEG3Gk4QBWyNtX2QeZA_ILHrtwG8";
 
 const app = express();
 
