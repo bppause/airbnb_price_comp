@@ -1,0 +1,38 @@
+{
+  "name": "@bppau/morroskai-pricing-app",
+  "version": "1.0.0",
+  "description": "Morros Kai pricing app with local server and Airbnb comps refresh",
+  "type": "module",
+  "main": "server.js",
+  "files": [
+    "server.js",
+    "morroskai_pricing_v7_dynamic_header.html",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node -e \"console.log('package ok')\"",
+    "prepublishOnly": "npm run check"
+  },
+  "keywords": [
+    "airbnb",
+    "pricing",
+    "cartagena",
+    "real-estate",
+    "express"
+  ],
+  "author": "Brian Pause",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
