@@ -1,263 +1,1654 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Morroskai Pricing App</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morros KAI 317 — Weekly Pricing Schedule</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f7f4ef; --surface:#eee9df; --card:#fff; --border:#d8cfbf;
+  --ink:#1c1710; --ink2:#5a4f3e; --ink3:#9a8f7e;
+  --gold:#b8860b; --gold2:#d4a820; --gold3:#f0cc60;
+  --green:#2a6640; --green2:#3d9960;
+  --red:#8b2020; --red2:#c0392b;
+  --blue:#1a4a7a; --blue2:#2d6ea8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.5;}
+.topbar{background:var(--ink);color:#e8dfc8;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.topbar-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--gold3);}
+.topbar-meta{font-size:9px;letter-spacing:.08em;color:#9a8f7e;}
+.header{background:var(--card);border-bottom:2px solid var(--ink);padding:16px 20px;}
+.header-inner{max-width:1400px;margin:0 auto;}
+h1{font-family:'Playfair Display',serif;font-size:clamp(20px,3vw,30px);font-weight:900;color:var(--ink);margin-bottom:4px;}
+h1 em{color:var(--gold);font-style:normal;}
+.header-sub{font-size:10px;color:var(--ink3);margin-bottom:14px;}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+.ctrl{display:flex;flex-direction:column;gap:3px;}
+.ctrl label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);}
+.ctrl input{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 10px;outline:none;min-width:110px;}
+.ctrl input:focus{border-color:var(--gold);}
+.btn{background:var(--ink);border:none;border-radius:4px;color:var(--gold3);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:8px 14px;cursor:pointer;transition:background .2s;white-space:nowrap;}
+.btn:hover{background:#2d261e;}
+.btn-sm{background:none;border:1px solid var(--border);border-radius:4px;color:var(--ink2);font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;cursor:pointer;transition:all .2s;}
+.btn-sm:hover{border-color:var(--gold);color:var(--gold);}
+.btn-del{background:none;border:1px solid rgba(200,60,60,.3);border-radius:4px;color:var(--red2);font-size:13px;cursor:pointer;padding:3px 8px;line-height:1;}
+.btn-del:hover{background:rgba(200,60,60,.1);}
+.panel{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;}
+.panel-inner{max-width:1400px;margin:0 auto;}
+.panel-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.panel-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600;}
+.year-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 12px;cursor:pointer;color:var(--ink2);transition:all .15s;}
+.year-btn.active{background:var(--ink);color:var(--gold3);}
+.col-hdrs{display:grid;grid-template-columns:110px 110px 70px 1fr auto;gap:8px;margin-bottom:4px;}
+.col-hdr{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);}
+.peak-row{display:grid;grid-template-columns:110px 110px 70px 1fr auto;gap:8px;align-items:center;margin-bottom:5px;}
+.peak-row input[type=date],.peak-row input[type=number],.peak-row input[type=text]{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;}
+.peak-row input:focus{border-color:var(--gold);}
+.comps-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;}
+.comp-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;min-width:160px;flex:1;}
+.comp-name{font-size:10px;font-weight:600;color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.comp-rate{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--gold);}
+.comp-sub{font-size:9px;color:var(--ink3);margin-top:1px;}
+.comp-meta{font-size:9px;color:var(--ink3);}
+.comp-status{font-size:9px;font-style:italic;color:var(--ink3);}
+.comp-status.live{color:var(--green2);}
+.comp-status.err{color:var(--red2);}
+.spin{display:inline-block;animation:spn .8s linear infinite;}
+@keyframes spn{to{transform:rotate(360deg);}}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:12px 20px;max-width:1400px;margin:0 auto;}
+.sc{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--gold);border-radius:6px;padding:10px 12px;}
+.sc-lbl{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:2px;}
+.sc-val{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--gold);line-height:1.1;}
+.sc-sub{font-size:9px;color:var(--ink3);margin-top:2px;}
+.tabs{display:flex;padding:0 20px;max-width:1400px;margin:0 auto;border-bottom:1px solid var(--border);}
+.tab{padding:8px 18px;font-size:11px;font-weight:500;cursor:pointer;border-bottom:3px solid transparent;color:var(--ink3);transition:all .2s;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab:hover:not(.active){color:var(--ink);}
+.tbl-wrap{overflow-x:auto;padding:0 20px 40px;max-width:1400px;margin:0 auto;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead tr{background:var(--ink);}
+thead th{color:#e8dfc8;padding:8px 10px;text-align:left;font-weight:500;font-size:9px;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+thead th.r{text-align:right;}
+tbody tr{border-bottom:1px solid rgba(216,207,191,.35);transition:background .1s;}
+tbody tr.sel td{outline:2px solid rgba(26,74,122,.35);outline-offset:-2px;}
+tbody tr:hover td{background:rgba(184,134,11,.04);}
+tbody td{padding:7px 10px;white-space:nowrap;}
+tbody td.r{text-align:right;}
+tr.nye td{background:#fff0f8 !important;}
+tr.peak td{background:#fff8e6 !important;}
+tr.low td{background:#f8f0f0 !important;}
+tr.regular td{background:#fafaf9;}
+tr.yr-hdr td{background:var(--ink) !important;color:var(--gold3);font-family:'Playfair Display',serif;font-size:14px;padding:10px 10px 8px;}
+tr.mo-hdr td{background:var(--surface) !important;font-family:'Playfair Display',serif;font-size:12px;font-weight:700;padding:8px 10px;border-top:1px solid var(--border);}
+.badge{display:inline-block;font-size:8px;padding:1px 6px;border-radius:3px;font-weight:500;}
+.b-nye{background:rgba(192,96,160,.15);color:#8b2060;}
+.b-peak{background:rgba(212,168,32,.2);color:#7a5800;}
+.b-reg{background:rgba(122,184,160,.2);color:#2d6654;}
+.b-low{background:rgba(192,112,112,.15);color:var(--red);}
+.inf-adj{color:var(--blue2);}
+.gold-val{color:var(--gold2);font-weight:600;}
+.muted{color:var(--ink3);}
+.leg{display:flex;flex-wrap:wrap;gap:10px;padding:8px 20px 12px;max-width:1400px;margin:0 auto;font-size:9px;color:var(--ink2);}
+.leg span{display:flex;align-items:center;gap:4px;}
+.ld{width:10px;height:10px;border-radius:2px;}
+/* PROPERTY PROFILE PANEL */
+.prop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:8px;}
+.prop-field{display:flex;flex-direction:column;gap:3px;}
+.prop-field label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);}
+.prop-field input,.prop-field select,.prop-field textarea{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 9px;outline:none;width:100%;}
+.prop-field input:focus,.prop-field select:focus,.prop-field textarea:focus{border-color:var(--gold);}
+.prop-field textarea{resize:vertical;min-height:52px;line-height:1.4;}
+.prop-full{grid-column:1/-1;}
+.amenity-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.amenity-chip{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:3px 9px;font-size:10px;cursor:pointer;user-select:none;transition:all .15s;}
+.amenity-chip.on{background:rgba(184,134,11,.15);border-color:var(--gold);color:var(--gold);}
+.prop-section-lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:8px 0 4px;}
+.comp-edit-row{display:grid;grid-template-columns:1fr 140px 70px 60px auto;gap:6px;align-items:center;margin-bottom:5px;}
+.comp-edit-row input{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;}
+.comp-edit-row input:focus{border-color:var(--gold);}
+</style>
 
-  <!-- Config (from server) -->
-  <script src="/app-config.js"></script>
+<script src="/app-config.js"></script>
 
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <style>
-    body { font-family: Arial; padding:20px; }
-    input, select { margin:5px; padding:5px; }
-    button { margin:5px; padding:6px 10px; }
-    .card { border:1px solid #ddd; padding:10px; margin-top:10px; }
-  </style>
-</head>
-
-<body>
-
-<h2 id="title">Morroskai Pricing App</h2>
-
-<!-- AUTH -->
-<div class="card">
-  <button onclick="login()">Login with Google</button>
-  <button onclick="logout()">Logout</button>
-  <div id="user-info"></div>
-</div>
-
-<!-- PROPERTY -->
-<div class="card">
-  <h3>Property</h3>
-
-  <input id="building" placeholder="Building" value="Morros Kai">
-  <input id="unit" placeholder="Unit" value="317">
-  <input id="city" placeholder="City" value="Cartagena">
-  <input id="country" placeholder="Country" value="Colombia">
-
-  <br>
-
-  <input id="baseRate" type="number" value="400000">
-  <input id="fx" type="number" value="3500">
-
-  <br>
-
-  <input id="costs" type="number" value="9800000">
-  <input id="income" type="number" value="1000000">
-
-</div>
-
-<!-- SAVE / LOAD -->
-<div class="card">
-  <h3>Saved Properties</h3>
-
-  <select id="propertySelect"></select><br>
-
-  <button onclick="saveProperty()">Save now</button>
-  <button onclick="saveAsNew()">Save as new</button>
-  <button onclick="loadProperty()">Load Selected</button>
-</div>
-
-<!-- RESULT -->
-<div class="card">
-  <h3>Net Income</h3>
-  <div id="netCop"></div>
-  <div id="netUsd"></div>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+console.log("CONFIG:", window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+</script>
 
-let supabaseClient = null;
-let currentUser = null;
+</head>
+<body>
 
-// INIT
-window.addEventListener("load", async () => {
-  if (!window.SUPABASE_URL) {
-    alert("Supabase not configured");
-    return;
+<div class="topbar">
+  <span class="topbar-title" id="topbar-title">Morros KAI 317</span>
+  <span class="topbar-meta" id="topbar-meta">Serena del Mar &nbsp;&middot;&nbsp; Cartagena &nbsp;&middot;&nbsp; Weekly Pricing Schedule</span>
+</div>
+
+
+<div class="panel" id="account-panel">
+  <div class="panel-inner">
+    <div class="panel-hdr">
+      <span class="panel-title">Account</span>
+      <span id="auth-status" style="font-size:10px;color:var(--ink3)">Checking session...</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+      <div id="auth-controls" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      <div id="saved-properties-wrap" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+        <label for="saved-property-select" style="font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);">Saved Properties</label>
+        <select id="saved-property-select" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 9px;min-width:240px;"></select>
+        <button class="btn-sm" onclick="loadSelectedPropertyFromAccount()">Load Selected</button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--ink3);line-height:1.5">
+      Sign in to save this property's settings to your account. Each signed-in user only sees their own saved properties.
+    </div>
+  </div>
+</div>
+
+
+<div class="header">
+  <div class="header-inner">
+    <h1>Weekly Airbnb Pricing <em>Schedule</em></h1>
+    <div class="header-sub">Base rate &middot; Per-year seasons &amp; inflation &middot; Flat discount &middot; Airbnb fee &middot; Live comp rates &middot; COP &amp; USD</div>
+    <div class="controls">
+      <div class="ctrl"><label>Base Rate (COP)</label><input type="number" id="c-base" value="400000" step="10000" min="100000"></div>
+      <div class="ctrl"><label>USD / COP Rate</label><input type="number" id="c-fx" value="3500" step="50" min="2000"></div>
+      <div class="ctrl"><label>Co-host Share (%)</label><input type="number" id="c-cohost" value="85" step="1" min="0" max="100"></div>
+      <div class="ctrl"><label>Flat Discount (%)</label><input type="number" id="c-disc" value="15" step="1" min="0" max="50"></div>
+      <div class="ctrl" style="min-width:240px"><label>Comp Search Location</label><input type="text" id="c-location" value="Playa Manzanillo, Cartagena, Colombia" placeholder="e.g. Playa Manzanillo, Cartagena, Colombia"></div>
+      <div class="ctrl"><label>Airbnb Fee (%)</label><input type="number" id="c-airbnb" value="20" step="1" min="0" max="25"></div>
+      <button class="btn" onclick="build()">&#8635;&nbsp; Recalculate Pricing</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROPERTY PROFILE PANEL -->
+<div class="panel">
+  <div class="panel-inner">
+    <div class="panel-hdr">
+      <span class="panel-title">Property Profile &mdash; Used for Comp Search</span>
+      <span id="prop-status" style="font-size:9px;color:var(--ink3);font-style:italic;margin-left:auto"></span>
+    </div>
+    <div class="prop-grid" id="prop-grid">
+      <!-- populated by renderPropertyPanel() -->
+    </div>
+  </div>
+</div>
+
+<!-- PEAK SEASONS PANEL -->
+<div class="panel">
+  <div class="panel-inner">
+    <div class="panel-hdr">
+      <span class="panel-title">Peak Season Dates &amp; Markup &mdash; Per Year</span>
+      <div id="peak-year-tabs" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      <button class="btn-sm" onclick="addYear()">+ Add Year</button>
+    </div>
+    <div id="peak-year-content"></div>
+  </div>
+</div>
+
+<!-- COMPS PANEL -->
+<div class="panel">
+  <div class="panel-inner">
+    <div class="panel-hdr">
+      <span class="panel-title" id="comp-panel-title">Morros KAI Comps &middot; 2BR/2BA &middot; Live Market Rates</span>
+      <button class="btn-sm" onclick="fetchCompRates()">&#128269;&nbsp; Refresh Comps</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--ink2);cursor:pointer;user-select:none;margin-left:auto;">
+        <input type="checkbox" id="c-same-building" checked
+          style="accent-color:var(--gold);width:13px;height:13px;cursor:pointer;">
+        Same building only
+      </label>
+      <span class="comp-status" id="comp-status">not yet fetched &mdash; click Recalculate</span>
+    </div>
+    <div id="comp-week-label" style="margin:-2px 0 8px;font-size:10px;color:var(--blue2);"></div>
+    <div id="comp-edit-list" style="margin-bottom:10px;"></div>
+    <div class="comps-grid" id="comps-grid"></div>
+    <div id="comp-search-summary" style="display:none;margin-top:8px;font-size:10px;color:var(--ink2);background:rgba(26,74,122,.05);border-left:3px solid var(--blue2);padding:7px 12px;border-radius:0 4px 4px 0;line-height:1.6;"></div>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary" id="summary"></div>
+
+<!-- LEGEND -->
+<div class="leg">
+  <span><span class="ld" style="background:#c060a0"></span>New Year +200%</span>
+  <span><span class="ld" style="background:var(--gold2)"></span>Peak season</span>
+  <span><span class="ld" style="background:#7ab8a0"></span>Regular</span>
+  <span><span class="ld" style="background:#c07070"></span>Low season</span>
+  <span><span class="ld" style="background:var(--blue2)"></span>Inflation-adjusted</span>
+</div>
+
+<!-- TABS + TABLE -->
+<div class="tabs" id="main-tabs"></div>
+<div class="tbl-wrap" id="tbl-container"></div>
+
+<script>
+// ──────────────────────────────────────────────────────────
+// CONFIGURABLE DEFAULTS  (edit here or via the UI controls)
+// ──────────────────────────────────────────────────────────
+var CFG = {
+  baseRate:  400000,  // COP nightly base rate (default — can be overridden per year)
+  fx:        3500,    // COP per 1 USD default
+  cohost:    85,      // % of gross that is your revenue
+  discount:  15,      // % flat discount applied to all weeks
+  airbnbFee: 20,      // % Airbnb adds on top for guests
+};
+
+// ──────────────────────────────────────────────────────────
+// COMP SEARCH FLAGS
+var COMP_FLAGS = {
+  sameBuilding: true,  // only include comps from same building/complex
+};
+
+// ──────────────────────────────────────────────────────────
+// PROPERTY PROFILE  (edit here or via the Property panel)
+// ──────────────────────────────────────────────────────────
+var PROPERTY = {
+  building:    'Morros Kai',
+  unit:        '317',
+  neighborhood:'Playa Manzanillo',
+  city:        'Cartagena',
+  country:     'Colombia',
+  bedrooms:    2,
+  bathrooms:   2,
+  maxGuests:   6,
+  floorArea:   '', // sq m, optional
+  floor:       '', // e.g. "3rd floor", optional
+  rating:      5.0,
+  amenities:   ['Beach access','Pool','Gym','Parking','A/C','WiFi','Washer/Dryer','Kitchen','Smart TV'],
+  notes:       'Newest building in Serena del Mar (completed Sept 2025). Direct beach access. 5.0★ rating.',
+};
+
+// ──────────────────────────────────────────────────────────
+// Per-year configuration — add years dynamically via "+ Add Year"
+// ──────────────────────────────────────────────────────────
+// ── Per-year overrides: null = use global CFG value ─────────────
+// inflation: Banco de la República forecasts
+//   2026: 6.3% (Jan 2026 Monetary Policy Report — min wage hike impact, strong consumption)
+//   2027: 3.7% (converging toward 3% target, tight monetary policy)
+// fx: COP/USD approximate averages (USDCOP spot, Investing.com)
+//   2026: 3900 (Apr 2026 spot ~3,900)
+//   2027: 4000 (forecast — COP gradual depreciation trend)
+var YEARS = [
+  {
+    year: 2026,
+    inflation: 6.3,        // Banrep Jan 2026 forecast — highest since Sep 2024
+    lowMonths: [4,7,8,9],  // 0-indexed: May=4, Aug=7, Sep=8, Oct=9
+    // Per-year overrides (null = inherit from global CFG)
+    overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
+    occupancy: { regular:55, peak:78 },
+    peaks: [
+      { start:'2026-04-01', end:'2026-04-05',  markup:30,  label:'Easter' },
+      { start:'2026-06-15', end:'2026-08-01',  markup:30,  label:'Summer High Season' },
+      { start:'2026-10-08', end:'2026-10-11',  markup:30,  label:'Columbus Day' },
+      { start:'2026-11-12', end:'2026-11-15',  markup:30,  label:'Independence' },
+      { start:'2026-12-01', end:'2026-12-29',  markup:30,  label:'December Season' },
+      { start:'2026-12-30', end:'2027-01-02',  markup:200, label:'New Year' },
+    ]
+  },
+  {
+    year: 2027,
+    inflation: 3.7,        // Banrep forecast — declining toward 3% target
+    lowMonths: [4,7,8,9],
+    overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
+    occupancy: { regular:55, peak:78 },
+    peaks: [
+      { start:'2027-01-03', end:'2027-01-20',  markup:100, label:'January High Demand' },
+      { start:'2027-04-14', end:'2027-04-18',  markup:30,  label:'Easter' },
+      { start:'2027-06-15', end:'2027-08-01',  markup:30,  label:'Summer High Season' },
+      { start:'2027-10-11', end:'2027-10-12',  markup:30,  label:'Columbus Day' },
+      { start:'2027-11-11', end:'2027-11-15',  markup:30,  label:'Independence' },
+      { start:'2027-12-01', end:'2027-12-29',  markup:30,  label:'December Season' },
+      { start:'2027-12-30', end:'2028-01-02',  markup:200, label:'New Year' },
+    ]
   }
+];
 
-  supabaseClient = supabase.createClient(
-    window.SUPABASE_URL,
-    window.SUPABASE_ANON_KEY
-  );
+// Morros KAI 2BR/2BA comps — refreshed on Recalculate
+var COMPS = [
+  { name:'Morros Kai #1538',      url:'https://www.airbnb.com/rooms/1538124273490670394', rate_usd:115, rating:5.0,  live:false },
+  { name:'Luxury Kai Hills',      url:'https://www.airbnb.com/rooms/1594250681621248156', rate_usd:128, rating:5.0,  live:false },
+  { name:'Morros Kai Manzanillo', url:'https://www.airbnb.com/rooms/1574666192917720867', rate_usd:95,  rating:null, live:false },
+  { name:'Ocean View 2 Suites',   url:'https://www.airbnb.com/rooms/1632624456085695382', rate_usd:110, rating:null, live:false },
+];
 
-  const { data } = await supabaseClient.auth.getUser();
-  currentUser = data.user;
+// Occupancy targets by season type
+var OCC       = { nye:0.90, peak:0.78, regular:0.55, low:0.42 };
+// Comp rate multipliers by season type (relative to regular avg)
+var COMP_MULT = { nye:3.0,  peak:1.30, regular:1.0,  low:0.88 };
 
-  updateUserUI();
-  loadSavedProperties();
-  updateHeader();
-  calculate();
-});
+var currentTab     = 2026;
+var activePeakYear = 2026;
+var selectedCompWindow = null;
+var latestRows = [];
 
-// AUTH
-async function login() {
-  await supabaseClient.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: window.location.origin
-    }
-  });
+// ──────────────────────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────────────────────
+var MONTHS_FULL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fc(n) { return new Intl.NumberFormat('es-CO').format(Math.round(n)); }
+function fu(n, d) { return '$' + Number(n).toFixed(d === undefined ? 0 : d); }
+function fp(n) { return (n > 0 ? '+' : '') + n + '%'; }
+
+function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function toISO(d)  { return d.toISOString().slice(0,10); }
+function parseD(s) { return new Date(s + 'T00:00:00'); }
+
+function fmtSpan(s, e) {
+  var f = function(d) { return d.toLocaleDateString('en-US', {month:'short', day:'numeric'}); };
+  return f(s) + ' \u2013 ' + f(e);
 }
 
-async function logout() {
-  await supabaseClient.auth.signOut();
-  location.reload();
-}
-
-function updateUserUI() {
-  document.getElementById("user-info").innerText =
-    currentUser ? "Logged in: " + currentUser.email : "Not logged in";
-}
-
-// COLLECT ALL DATA
-function collectState() {
+function getVals() {
+  function iv(id, dflt, isFloat) {
+    var el = document.getElementById(id);
+    var v  = el ? (isFloat ? parseFloat(el.value) : parseInt(el.value)) : NaN;
+    return isNaN(v) ? dflt : v;
+  }
   return {
-    building: val("building"),
-    unit: val("unit"),
-    city: val("city"),
-    country: val("country"),
-
-    baseRate: num("baseRate"),
-    fx: num("fx"),
-
-    monthlyCosts: num("costs"),
-    monthlyIncome: num("income")
+    baseRate:  iv('c-base',   CFG.baseRate,  false),
+    fx:        iv('c-fx',     CFG.fx,        false),
+    cohost:    iv('c-cohost', CFG.cohost,    false) / 100,
+    discount:  iv('c-disc',   CFG.discount,  true),
+    airbnbFee: iv('c-airbnb', CFG.airbnbFee, true),
   };
 }
 
-// APPLY STATE
-function applyState(s) {
-  set("building", s.building);
-  set("unit", s.unit);
-  set("city", s.city);
-  set("country", s.country);
-
-  set("baseRate", s.baseRate);
-  set("fx", s.fx);
-
-  set("costs", s.monthlyCosts);
-  set("income", s.monthlyIncome);
-
-  updateHeader();
-  calculate();
+function getCompSearchLocation() {
+  var el = document.getElementById('c-location');
+  var uiVal = el && el.value ? el.value.trim() : '';
+  if (uiVal) return uiVal;
+  var parts = [];
+  if (PROPERTY.building) parts.push(PROPERTY.building);
+  if (PROPERTY.neighborhood) parts.push(PROPERTY.neighborhood);
+  if (PROPERTY.city) parts.push(PROPERTY.city);
+  if (PROPERTY.country) parts.push(PROPERTY.country);
+  return parts.join(', ');
 }
 
-// SAVE
-async function saveProperty() {
-  const state = collectState();
-  const name = "Property";
+// Merge global CFG + UI inputs + per-year overrides for a specific year
+function getYearVals(year) {
+  var g = getVals(); // global UI values
+  var yc = null;
+  for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === year) { yc = YEARS[i]; break; } }
+  var ov = (yc && yc.overrides) ? yc.overrides : {};
+  return {
+    baseRate:  ov.baseRate  !== null && ov.baseRate  !== undefined ? ov.baseRate  : g.baseRate,
+    fx:        ov.fx        !== null && ov.fx        !== undefined ? ov.fx        : g.fx,
+    cohost:    ov.cohost    !== null && ov.cohost    !== undefined ? ov.cohost/100 : g.cohost,
+    discount:  ov.discount  !== null && ov.discount  !== undefined ? ov.discount  : g.discount,
+    airbnbFee: ov.airbnbFee !== null && ov.airbnbFee !== undefined ? ov.airbnbFee : g.airbnbFee,
+  };
+}
 
-  await supabaseClient
-    .from("user_properties")
-    .upsert({
-      user_id: currentUser.id,
-      slug: "default",
-      name,
-      settings: state
+function getYearConfig(year) {
+  var yc = null;
+  for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === year) { yc = YEARS[i]; break; } }
+  return yc || null;
+}
+
+function getYearOccupancy(year, type) {
+  var yc = getYearConfig(year);
+  var occ = yc && yc.occupancy ? yc.occupancy : {};
+  if (type === 'peak') return occ.peak !== undefined ? occ.peak / 100 : OCC.peak;
+  if (type === 'regular') return occ.regular !== undefined ? occ.regular / 100 : OCC.regular;
+  return OCC[type] !== undefined ? OCC[type] : OCC.regular;
+}
+
+function setYearOccupancy(yr, field, val) {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === yr) {
+      if (!YEARS[i].occupancy) YEARS[i].occupancy = {};
+      YEARS[i].occupancy[field] = isNaN(val) ? (field === 'peak' ? 78 : 55) : val;
+      break;
+    }
+  }
+}
+
+function getCompAvg() {
+  var v = COMPS.filter(function(c) { return c.rate_usd; });
+  return v.length ? v.reduce(function(s,c) { return s + c.rate_usd; }, 0) / v.length : 107;
+}
+
+// ──────────────────────────────────────────────────────────
+// INFLATION  — weekly compound, cascades across years
+// ──────────────────────────────────────────────────────────
+function infFactor(year, wi) {
+  var yi = -1;
+  for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === year) { yi = i; break; } }
+  if (yi < 0) return 1;
+  var base = 1;
+  for (var j = 0; j < yi; j++) base *= (1 + YEARS[j].inflation / 100);
+  var wm = Math.pow(1 + YEARS[yi].inflation / 100, 1/52);
+  return base * Math.pow(wm, wi);
+}
+
+// ──────────────────────────────────────────────────────────
+// PEAK LOOKUP
+// ──────────────────────────────────────────────────────────
+function getPeak(date) {
+  var iso = toISO(date);
+  var best = null;
+  for (var yi = 0; yi < YEARS.length; yi++) {
+    var peaks = YEARS[yi].peaks;
+    for (var pi = 0; pi < peaks.length; pi++) {
+      var p = peaks[pi];
+      if (iso >= p.start && iso <= p.end) {
+        if (!best || p.markup > best.markup) best = p;
+      }
+    }
+  }
+  return best;
+}
+
+function getSeasonType(date, year) {
+  var peak = getPeak(date);
+  if (peak) return peak.markup >= 150 ? 'nye' : 'peak';
+  var yc = null;
+  for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === year) { yc = YEARS[i]; break; } }
+  var lm = yc ? yc.lowMonths : [4,7,8,9];
+  return lm.indexOf(date.getMonth()) >= 0 ? 'low' : 'regular';
+}
+
+// ──────────────────────────────────────────────────────────
+// COMP SEARCH FLAGS
+
+// ──────────────────────────────────────────────────────────
+// PROPERTY PROFILE PANEL
+// ──────────────────────────────────────────────────────────
+var ALL_AMENITIES = [
+  'Beach access','Pool','Gym','A/C','WiFi','Kitchen','Parking',
+  'Washer/Dryer','Smart TV','Hot tub','Balcony/Terrace','Ocean view',
+  'Elevator','BBQ','Baby-friendly','Pet-friendly','EV charging'
+];
+
+function renderPropertyPanel() {
+  var el = document.getElementById('prop-grid');
+  if (!el) return;
+  var p = PROPERTY;
+
+  var amenityHtml = '<div class="prop-field prop-full"><label>Amenities</label><div class="amenity-grid">';
+  ALL_AMENITIES.forEach(function(a) {
+    var on = p.amenities.indexOf(a) >= 0;
+    var aSafe = a.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    amenityHtml += '<div class="amenity-chip' + (on ? ' on' : '') + '" onclick="toggleAmenity(this,&quot;' + aSafe + '&quot;)">' + a + '</div>';
+  });
+  amenityHtml += '</div></div>';
+
+  el.innerHTML = ''
+    + '<div class="prop-field"><label>Building / Complex</label>'
+    + '<input type="text" id="p-building" value="' + p.building + '" onchange="PROPERTY.building=this.value;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>Unit / Apartment #</label>'
+    + '<input type="text" id="p-unit" value="' + p.unit + '" onchange="PROPERTY.unit=this.value;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>Neighborhood / Area</label>'
+    + '<input type="text" id="p-neighborhood" value="' + p.neighborhood + '" onchange="PROPERTY.neighborhood=this.value;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>City</label>'
+    + '<input type="text" id="p-city" value="' + p.city + '" onchange="PROPERTY.city=this.value;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>Country</label>'
+    + '<input type="text" id="p-country" value="' + p.country + '" onchange="PROPERTY.country=this.value;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>Bedrooms</label>'
+    + '<input type="number" id="p-beds" value="' + p.bedrooms + '" min="1" max="10" onchange="PROPERTY.bedrooms=parseInt(this.value)||1;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>Bathrooms</label>'
+    + '<input type="number" id="p-baths" value="' + p.bathrooms + '" min="1" max="10" step="0.5" onchange="PROPERTY.bathrooms=parseFloat(this.value)||1;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>Max Guests</label>'
+    + '<input type="number" id="p-guests" value="' + p.maxGuests + '" min="1" max="20" onchange="PROPERTY.maxGuests=parseInt(this.value)||1;updatePropStatus();"></div>'
+
+    + '<div class="prop-field"><label>Floor Area (m&sup2;, optional)</label>'
+    + '<input type="text" id="p-area" value="' + (p.floorArea||'') + '" placeholder="e.g. 85" onchange="PROPERTY.floorArea=this.value;"></div>'
+
+    + '<div class="prop-field"><label>Floor / Level (optional)</label>'
+    + '<input type="text" id="p-floor" value="' + (p.floor||'') + '" placeholder="e.g. 3rd floor" onchange="PROPERTY.floor=this.value;"></div>'
+
+    + '<div class="prop-field"><label>Airbnb Rating</label>'
+    + '<input type="number" id="p-rating" value="' + p.rating + '" min="1" max="5" step="0.1" onchange="PROPERTY.rating=parseFloat(this.value)||5.0;"></div>'
+
+    + '<div class="prop-field prop-full"><label>Comp Search Notes (extra context for AI)</label>'
+    + '<textarea id="p-notes" onchange="PROPERTY.notes=this.value;">' + p.notes + '</textarea></div>'
+
+    + amenityHtml;
+
+  updatePropStatus();
+}
+
+function toggleAmenity(el, name) {
+  var idx = PROPERTY.amenities.indexOf(name);
+  if (idx >= 0) { PROPERTY.amenities.splice(idx, 1); el.classList.remove('on'); }
+  else          { PROPERTY.amenities.push(name);      el.classList.add('on'); }
+}
+
+function updateTopHeader() {
+  var titleEl = document.getElementById('topbar-title');
+  var metaEl = document.getElementById('topbar-meta');
+
+  var titleParts = [];
+  if (PROPERTY.building) titleParts.push(PROPERTY.building);
+  if (PROPERTY.unit) titleParts.push('#' + PROPERTY.unit);
+  var titleText = titleParts.join(' ').trim() || 'Property Pricing';
+
+  var metaParts = [];
+  if (PROPERTY.neighborhood) metaParts.push(PROPERTY.neighborhood);
+  if (PROPERTY.city) metaParts.push(PROPERTY.city);
+  if (PROPERTY.country) metaParts.push(PROPERTY.country);
+  metaParts.push('Weekly Pricing Schedule');
+  var metaText = metaParts.join(' · ');
+
+  if (titleEl) titleEl.textContent = titleText;
+  if (metaEl) metaEl.textContent = metaText;
+  document.title = titleText + ' — Weekly Pricing Schedule';
+}
+
+function updatePropStatus() {
+  updateTopHeader();
+  var el = document.getElementById('prop-status');
+  if (el) {
+    el.textContent = PROPERTY.bedrooms + 'BR / ' + PROPERTY.bathrooms + 'BA · '
+      + PROPERTY.maxGuests + ' guests · '
+      + PROPERTY.building + (PROPERTY.unit ? ' #' + PROPERTY.unit : '') + ', '
+      + PROPERTY.neighborhood + ', ' + PROPERTY.city;
+  }
+}
+
+function getPropSummary() {
+  return PROPERTY.bedrooms + ' bedroom, ' + PROPERTY.bathrooms + ' bathroom apartment'
+    + (PROPERTY.maxGuests ? ', sleeps ' + PROPERTY.maxGuests : '')
+    + (PROPERTY.floorArea ? ', ' + PROPERTY.floorArea + 'm²' : '')
+    + (PROPERTY.floor ? ', ' + PROPERTY.floor : '')
+    + ' in ' + PROPERTY.building + (PROPERTY.unit ? ' #' + PROPERTY.unit : '')
+    + ', ' + PROPERTY.neighborhood + ', ' + PROPERTY.city + ', ' + PROPERTY.country
+    + '. Airbnb rating: ' + PROPERTY.rating + '/5.0.'
+    + (PROPERTY.amenities.length ? ' Key amenities: ' + PROPERTY.amenities.join(', ') + '.' : '')
+    + (PROPERTY.notes ? ' ' + PROPERTY.notes : '');
+}
+
+// ──────────────────────────────────────────────────────────
+// COMP DISCOVERY & FETCH  (local backend endpoint)
+// ──────────────────────────────────────────────────────────
+var API_BASE = window.location.origin;
+
+function getCompWindowLabel() {
+  if (!selectedCompWindow) return 'Comp search window: using general property search dates.';
+  return 'Comp search window: ' + fmtSpan(parseD(selectedCompWindow.checkIn), addDays(parseD(selectedCompWindow.checkOut), -1))
+    + ' · checkout ' + selectedCompWindow.checkOut;
+}
+
+function updateCompWeekLabel() {
+  var el = document.getElementById('comp-week-label');
+  if (el) el.textContent = getCompWindowLabel() + ' Click any table row to change the comp week.';
+}
+
+function selectCompWeek(index, doRefresh) {
+  if (latestRows[index]) {
+    selectedCompWindow = {
+      checkIn: toISO(latestRows[index].start),
+      checkOut: toISO(addDays(latestRows[index].end, 1)),
+      label: fmtSpan(latestRows[index].start, latestRows[index].end)
+    };
+    updateCompWeekLabel();
+    renderTable(latestRows, getVals());
+    if (doRefresh) fetchCompRates();
+  }
+}
+
+function fetchCompRates() {
+  var el = document.getElementById('comp-status');
+  el.className = 'comp-status';
+  el.innerHTML = '<span class="spin">&#8635;</span> Refreshing live comps&hellip;';
+
+  var sameBuildingEl = document.getElementById('c-same-building');
+  var sameBuilding = sameBuildingEl ? sameBuildingEl.checked : COMP_FLAGS.sameBuilding;
+  COMP_FLAGS.sameBuilding = sameBuilding;
+
+  if (!selectedCompWindow && latestRows.length) {
+    selectCompWeek(0, false);
+  }
+
+  var compLocation = getCompSearchLocation();
+  var payload = {
+    property: Object.assign({}, PROPERTY, { searchLocation: compLocation }),
+    compSearchLocation: compLocation,
+    sameBuilding: sameBuilding,
+    existingComps: COMPS,
+    fx: getVals().fx,
+    stayWindow: selectedCompWindow
+  };
+
+  fetch(API_BASE + '/api/comps/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(resp) {
+    return resp.json().then(function(data) {
+      if (!resp.ok) {
+        throw new Error(data && data.error ? data.error : 'Comp API error ' + resp.status);
+      }
+      return data;
     });
-
-  loadSavedProperties();
-}
-
-// SAVE NEW
-async function saveAsNew() {
-  const name = prompt("Property name?");
-  if (!name) return;
-
-  const state = collectState();
-
-  await supabaseClient
-    .from("user_properties")
-    .insert({
-      user_id: currentUser.id,
-      slug: Date.now().toString(),
-      name,
-      settings: state
-    });
-
-  loadSavedProperties();
-}
-
-// LOAD LIST
-async function loadSavedProperties() {
-  if (!currentUser) return;
-
-  const { data } = await supabaseClient
-    .from("user_properties")
-    .select("*")
-    .eq("user_id", currentUser.id);
-
-  const select = document.getElementById("propertySelect");
-  select.innerHTML = "";
-
-  data?.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = p.name;
-    select.appendChild(opt);
+  })
+  .then(function(result) {
+    applyDiscoveredComps(result);
+    var liveCount = COMPS.filter(function(c){ return c.live; }).length;
+    var providerLabel = result && result.provider ? ' via ' + result.provider : '';
+    el.className = 'comp-status live';
+    el.textContent = '\u2713 ' + COMPS.length + ' comps loaded (' + liveCount + ' live)' + providerLabel + ' \u00b7 ' + new Date().toLocaleTimeString();
+  })
+  .catch(function(e) {
+    el.className = 'comp-status err';
+    el.textContent = '\u26a0 ' + e.message + ' \u2014 using existing estimates';
+  })
+  .finally(function() {
+    renderCompEditList();
+    renderCompsPanel();
+    build();
   });
 }
 
-// LOAD SELECTED
-async function loadProperty() {
-  const id = document.getElementById("propertySelect").value;
-
-  const { data } = await supabaseClient
-    .from("user_properties")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (data) applyState(data.settings);
+function callAPI() {
+  throw new Error('callAPI is no longer used. Use /api/comps/search instead.');
 }
 
-// CALCULATE
-function calculate() {
-  const base = num("baseRate");
-  const fx = num("fx");
+// Replace COMPS with newly discovered set, preserving manual entries that weren't found
+function applyDiscoveredComps(result) {
+  var incoming = result.comps || [];
+  var newComps = [];
 
-  const monthlyCosts = num("costs");
-  const monthlyIncome = num("income");
+  // Add all discovered comps with valid URLs
+  for (var ci = 0; ci < incoming.length; ci++) {
+    var lc = incoming[ci];
+    if (!lc.url) continue;
+    var cleanUrl = lc.url.replace(/\?.*/, '');
+    newComps.push({
+      name:      (lc.name || 'Listing').slice(0, 36),
+      url:       cleanUrl,
+      rate_usd:  lc.rate_usd  || null,
+      rating:    lc.rating    || null,
+      reviews:   lc.reviews   || null,
+      bedrooms:  lc.bedrooms  || null,
+      bathrooms: lc.bathrooms || null,
+      notes:     lc.notes     || '',
+      live:      !!(lc.found && lc.rate_usd)
+    });
+  }
 
-  const annualCosts = monthlyCosts * 12;
-  const annualIncome = monthlyIncome * 12;
+  // Keep any manually-added comps not already in new set
+  for (var ei = 0; ei < COMPS.length; ei++) {
+    var existing = COMPS[ei];
+    if (!existing.url) continue;
+    var existRoomId = existing.url.split('/rooms/')[1];
+    if (!existRoomId) continue;
+    var alreadyIn = false;
+    for (var ni = 0; ni < newComps.length; ni++) {
+      if (newComps[ni].url.indexOf(existRoomId) >= 0) { alreadyIn = true; break; }
+    }
+    if (!alreadyIn) newComps.push(existing);
+  }
 
-  const gross = base * 365 * 0.6; // simple assumption
-  const net = gross + annualIncome - annualCosts;
+  // If same-building flag is set, filter to only building comps
+  // (use building name presence in listing name or notes as heuristic)
+  if (COMP_FLAGS.sameBuilding && newComps.length > 0) {
+    var buildingLow = (PROPERTY.building || '').toLowerCase();
+    var filtered = newComps.filter(function(c) {
+      var nameLow  = (c.name  || '').toLowerCase();
+      var notesLow = (c.notes || '').toLowerCase();
+      return nameLow.indexOf(buildingLow) >= 0 || notesLow.indexOf(buildingLow) >= 0
+          || nameLow.indexOf('morros kai') >= 0 || nameLow.indexOf('morros k') >= 0;
+    });
+    // Only apply filter if we found at least 1 match — otherwise keep all
+    if (filtered.length > 0) newComps = filtered;
+  }
+  if (newComps.length > 0) COMPS = newComps;
 
-  document.getElementById("netCop").innerText =
-    "Net COP: " + net.toLocaleString();
+  // Show market summary
+  if (result.search_summary) {
+    var ssEl = document.getElementById('comp-search-summary');
+    if (ssEl) { ssEl.textContent = result.search_summary; ssEl.style.display = 'block'; }
+  }
 
-  document.getElementById("netUsd").innerText =
-    "Net USD: " + (net / fx).toFixed(0);
+  // Update comp panel title
+  var titleEl = document.getElementById('comp-panel-title');
+  if (titleEl) {
+    titleEl.textContent = (PROPERTY.building || 'Property') + ' Comps \u00b7 '
+      + (PROPERTY.bedrooms || 2) + 'BR/' + (PROPERTY.bathrooms || 2) + 'BA \u00b7 '
+      + (PROPERTY.neighborhood || '') + ', ' + (PROPERTY.city || '') + ' \u00b7 Live Market Rates';
+  }
 }
 
-// HEADER
-function updateHeader() {
-  const title = `${val("building")} #${val("unit")} - ${val("city")}`;
-  document.getElementById("title").innerText = title;
-  document.title = title;
+// Legacy helper kept for compatibility
+function applyCompResults(result) { applyDiscoveredComps(result); }
+
+
+// ──────────────────────────────────────────────────────────
+// PEAK SEASONS PANEL
+// ──────────────────────────────────────────────────────────
+function makeOverrideField(yr, field, lbl, val, placeholder, parseFn, inputType, step) {
+  var inputStyle = 'background:var(--surface);border:1px solid var(--border);border-radius:4px;'
+    + 'font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);';
+  return '<div>'
+    + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">' + lbl + '</div>'
+    + '<input type="' + inputType + '" value="' + (val !== '' ? val : '') + '" '
+    + 'placeholder="' + placeholder + '" step="' + step + '" min="0" '
+    + 'style="' + inputStyle + '" '
+    + 'onchange="setYearOverride(' + yr + ',\'' + field + '\',' + parseFn + '(this.value)||null);build();">'
+    + '</div>';
 }
 
-// HELPERS
-function val(id){ return document.getElementById(id).value; }
-function num(id){ return Number(val(id)) || 0; }
-function set(id,v){ document.getElementById(id).value = v; }
+function setYearOverride(yr, field, val) {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === yr) {
+      if (!YEARS[i].overrides) YEARS[i].overrides = {};
+      // empty string or NaN = clear override (use global)
+      YEARS[i].overrides[field] = (val === null || val === '' || isNaN(val)) ? null : val;
+      break;
+    }
+  }
+}
 
-document.querySelectorAll("input").forEach(i=>{
-  i.addEventListener("input", ()=>{
-    updateHeader();
-    calculate();
+function renderPeaksPanel() {
+  var tabsEl = document.getElementById('peak-year-tabs');
+  if (tabsEl) {
+    tabsEl.innerHTML = YEARS.map(function(y) {
+      return '<button class="year-btn' + (activePeakYear === y.year ? ' active' : '') + '" '
+        + 'onclick="switchYearContext(' + y.year + ')">' + y.year + '</button>';
+    }).join('');
+  }
+
+  var yc = null;
+  for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === activePeakYear) { yc = YEARS[i]; break; } }
+  var el = document.getElementById('peak-year-content');
+  if (!yc || !el) return;
+
+  var yr = yc.year;
+
+  var ov = yc.overrides || {};
+  function ovVal(field) { return ov[field] !== null && ov[field] !== undefined ? ov[field] : ''; }
+  function ovPlaceholder(field) {
+    var g = getVals();
+    if (field === 'baseRate') return 'Global: ' + g.baseRate;
+    if (field === 'fx')       return 'Global: ' + g.fx;
+    if (field === 'cohost')   return 'Global: ' + Math.round(g.cohost*100) + '%';
+    if (field === 'discount') return 'Global: ' + g.discount + '%';
+    if (field === 'airbnbFee')return 'Global: ' + g.airbnbFee + '%';
+    return '';
+  }
+  var html = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;flex-wrap:wrap;">'
+    + '<label style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">'
+    + yr + ' Inflation (%)</label>'
+    + '<input type="number" value="' + yc.inflation + '" min="0" max="30" step="0.1" '
+    + 'style="width:75px;background:var(--surface);border:1px solid var(--border);border-radius:4px;'
+    + 'font-family:JetBrains Mono,monospace;font-size:12px;padding:5px 8px;outline:none;color:var(--ink);" '
+    + 'onchange="setPeakYearInflation(' + yr + ', parseFloat(this.value)||0)">'
+    + '<span style="font-size:9px;color:var(--ink3)">Banrep forecast — weekly compound</span>'
+    + '<button class="btn-sm" style="margin-left:auto" onclick="addPeak()">+ Add Period</button>';
+
+  // Per-year overrides row
+  html += '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px;'
+    + 'background:rgba(26,74,122,.04);border:1px solid rgba(26,74,122,.15);border-radius:6px;padding:10px 12px;">'
+    + '<div style="grid-column:1/-1;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue2);margin-bottom:4px">'
+    + yr + ' Rate Overrides <span style="font-weight:400;color:var(--ink3)">&mdash; leave blank to use global control value</span></div>'
+    + makeOverrideField(yr, 'baseRate',  'Base Rate (COP)',    ovVal('baseRate'),  ovPlaceholder('baseRate'),  'parseInt', 'number', '10000'  )
+    + makeOverrideField(yr, 'fx',        'USD/COP Rate',       ovVal('fx'),        ovPlaceholder('fx'),        'parseInt', 'number', '50'     )
+    + makeOverrideField(yr, 'cohost',    'Co-host Share (%)',  ovVal('cohost'),    ovPlaceholder('cohost'),    'parseFloat','number','1'      )
+    + makeOverrideField(yr, 'discount',  'Flat Discount (%)',  ovVal('discount'),  ovPlaceholder('discount'),  'parseFloat','number','1'      )
+    + makeOverrideField(yr, 'airbnbFee', 'Airbnb Fee (%)',     ovVal('airbnbFee'), ovPlaceholder('airbnbFee'), 'parseFloat','number','1'      )
+    + '</div>';
+
+  var html_btn = '';
+
+  if (YEARS.length > 1) {
+    html_btn += '<button class="btn-del" onclick="removeYear(' + yr + ')">Remove ' + yr + '</button>';
+  }
+  html += html_btn;
+
+  html += '<div class="col-hdrs">'
+    + '<span class="col-hdr">Start</span><span class="col-hdr">End</span>'
+    + '<span class="col-hdr">Markup %</span><span class="col-hdr">Label</span><span></span></div>';
+
+  for (var pi = 0; pi < yc.peaks.length; pi++) {
+    var p  = yc.peaks[pi];
+    var tc = p.markup >= 150 ? 'color:var(--gold2)' : 'color:var(--gold)';
+    html += '<div class="peak-row">'
+      + '<input type="date" value="' + p.start + '" onchange="setPeakField(' + yr + ',' + pi + ',\'start\',this.value)">'
+      + '<input type="date" value="' + p.end   + '" onchange="setPeakField(' + yr + ',' + pi + ',\'end\',this.value)">'
+      + '<input type="number" value="' + p.markup + '" min="-50" max="500" step="5" '
+      + 'style="' + tc + ';font-weight:600" onchange="setPeakField(' + yr + ',' + pi + ',\'markup\',parseInt(this.value)||0);build();">'
+      + '<input type="text" value="' + p.label.replace(/"/g,'&quot;') + '" placeholder="Label" '
+      + 'onchange="setPeakField(' + yr + ',' + pi + ',\'label\',this.value)">'
+      + '<button class="btn-del" onclick="delPeak(' + pi + ')">&#215;</button>'
+      + '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function setPeakYearInflation(yr, val) {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === yr) { YEARS[i].inflation = val; break; }
+  }
+  updateInfDisplay();
+  build();
+}
+
+// Auto-suggest label from date range
+function suggestLabel(start, end) {
+  if (!start || !end) return '';
+  var s = new Date(start + 'T00:00:00');
+  var e = new Date(end   + 'T00:00:00');
+  var sm = s.getMonth(), sd = s.getDate();
+  var em = e.getMonth(), ed = e.getDate();
+  // NYE / New Year
+  if ((sm === 11 && sd >= 28) || (em === 0 && ed <= 5)) return 'New Year';
+  // Jan high demand
+  if (sm === 0 && sd >= 3 && em === 0 && ed <= 25) return 'January High Demand';
+  // Easter (March-April)
+  if ((sm === 2 || sm === 3) && (em === 2 || em === 3)) return 'Easter / Holy Week';
+  // Summer (June-Aug)
+  if (sm >= 5 && sm <= 6 && em >= 6 && em <= 7) return 'Summer High Season';
+  // Columbus Day (Oct 8-13)
+  if (sm === 9 && sd >= 6 && ed <= 14) return 'Columbus Day';
+  // Independence (Nov 11-15)
+  if (sm === 10 && sd >= 10 && ed <= 16) return 'Independence Day';
+  // December Season
+  if (sm === 11 && sd >= 1 && ed <= 29) return 'December Season';
+  // Generic month name
+  var MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return MNAMES[sm] + (sm !== em ? '–' + MNAMES[em] : '') + ' Season';
+}
+
+function setPeakField(yr, pi, field, val) {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === yr && YEARS[i].peaks[pi] !== undefined) {
+      YEARS[i].peaks[pi][field] = val;
+      // Auto-fill label when start/end date changes and label is blank/default
+      if (field === 'start' || field === 'end') {
+        var p2 = YEARS[i].peaks[pi];
+        var isDefault = !p2.label || p2.label === 'New Period' || p2.label === '';
+        if (isDefault && p2.start && p2.end) {
+          var suggested = suggestLabel(p2.start, p2.end);
+          YEARS[i].peaks[pi].label = suggested;
+          // Update the label input in DOM without full re-render (preserves focus)
+          var rows = document.querySelectorAll('#peak-year-content .peak-row');
+          if (rows[pi]) {
+            var labelInput = rows[pi].querySelectorAll('input[type=text]')[0];
+            if (labelInput && !labelInput.matches(':focus')) labelInput.value = suggested;
+          }
+        }
+      }
+      break;
+    }
+  }
+}
+
+function addPeak() {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === activePeakYear) {
+      var newStart = activePeakYear + '-06-01';
+      var newEnd   = activePeakYear + '-06-07';
+      YEARS[i].peaks.push({ start: newStart, end: newEnd, markup:30, label: suggestLabel(newStart, newEnd) });
+      renderPeaksPanel();
+      build();
+      return;
+    }
+  }
+}
+
+function delPeak(pi) {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === activePeakYear) {
+      YEARS[i].peaks.splice(pi, 1);
+      renderPeaksPanel();
+      build();
+      return;
+    }
+  }
+}
+
+function addYear() {
+  var last   = YEARS[YEARS.length - 1];
+  var ny     = last.year + 1;
+  var newPeaks = last.peaks.map(function(p) {
+    function bumpYear(s) {
+      return s.replace(/\d{4}/g, function(m) {
+        var n = parseInt(m);
+        if (n === last.year)     return String(ny);
+        if (n === last.year + 1) return String(ny + 1);
+        return m;
+      });
+    }
+    return { start: bumpYear(p.start), end: bumpYear(p.end), markup: p.markup, label: p.label };
   });
-});
+  var newInf = Math.max(3.0, parseFloat((last.inflation - 0.5).toFixed(1)));
+  YEARS.push({ year: ny, inflation: newInf, lowMonths: [4,7,8,9], occupancy: { regular: (last.occupancy && last.occupancy.regular !== undefined ? last.occupancy.regular : 55), peak: (last.occupancy && last.occupancy.peak !== undefined ? last.occupancy.peak : 78) }, peaks: newPeaks });
+  activePeakYear = ny;
+  renderTabs();
+  renderPeaksPanel();
+  updateInfDisplay();
+  build();
+}
 
+function removeYear(yr) {
+  if (YEARS.length <= 1) return;
+  YEARS = YEARS.filter(function(y) { return y.year !== yr; });
+  activePeakYear = YEARS[0].year;
+  if (currentTab === yr) currentTab = YEARS[0].year;
+  renderTabs();
+  renderPeaksPanel();
+  updateInfDisplay();
+  build();
+}
+
+function updateInfDisplay() {}
+
+// ──────────────────────────────────────────────────────────
+// COMPS PANEL
+// ──────────────────────────────────────────────────────────
+function renderCompEditList() {
+  var el = document.getElementById('comp-edit-list');
+  if (!el) return;
+
+  // Clear and rebuild using DOM API to avoid HTML attribute escaping issues
+  el.innerHTML = '';
+
+  // Header row
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'display:grid;grid-template-columns:1fr 160px 72px 60px auto;gap:6px;margin-bottom:4px;';
+  ['Listing URL','Name','Rate USD','Rating',''].forEach(function(t) {
+    var s = document.createElement('span');
+    s.style.cssText = 'font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3)';
+    s.textContent = t;
+    hdr.appendChild(s);
+  });
+  el.appendChild(hdr);
+
+  for (var i = 0; i < COMPS.length; i++) {
+    (function(idx) {
+      var c = COMPS[idx];
+      var row = document.createElement('div');
+      row.className = 'comp-edit-row';
+      row.style.gridTemplateColumns = '1fr 160px 72px 60px auto';
+
+      function mkInput(type, val, placeholder, extras) {
+        var inp = document.createElement('input');
+        inp.type = type; inp.value = val || ''; inp.placeholder = placeholder || '';
+        if (extras) { for (var k in extras) inp[k] = extras[k]; }
+        return inp;
+      }
+
+      var urlIn = mkInput('text', c.url, 'https://www.airbnb.com/rooms/...');
+      urlIn.addEventListener('change', function() {
+        setCompField(idx, 'url', this.value);
+        renderCompsPanel();
+      });
+
+      var nameIn = mkInput('text', c.name, 'Listing name');
+      nameIn.addEventListener('change', function() {
+        setCompField(idx, 'name', this.value);
+        renderCompsPanel();
+      });
+
+      var rateIn = mkInput('number', c.rate_usd || '', '115', {min:'0', step:'1'});
+      rateIn.addEventListener('change', function() {
+        setCompField(idx, 'rate_usd', parseFloat(this.value) || null);
+        renderCompsPanel();
+        build();
+      });
+
+      var ratingIn = mkInput('number', c.rating || '', '5.0', {min:'0', max:'5', step:'0.1'});
+      ratingIn.addEventListener('change', function() {
+        setCompField(idx, 'rating', parseFloat(this.value) || null);
+        renderCompsPanel();
+      });
+
+      var liveTag = document.createElement('span');
+      liveTag.style.cssText = 'font-size:9px;color:' + (c.live ? 'var(--green2)' : 'var(--ink3)') + ';align-self:center;';
+      liveTag.textContent = c.live ? 'live' : 'est.';
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'btn-del';
+      delBtn.innerHTML = '&times;';
+      delBtn.title = 'Remove';
+      delBtn.addEventListener('click', function() { delComp(idx); });
+
+      var rightCell = document.createElement('div');
+      rightCell.style.cssText = 'display:flex;align-items:center;gap:4px;';
+      rightCell.appendChild(liveTag);
+      rightCell.appendChild(delBtn);
+
+      row.appendChild(urlIn);
+      row.appendChild(nameIn);
+      row.appendChild(rateIn);
+      row.appendChild(ratingIn);
+      row.appendChild(rightCell);
+      el.appendChild(row);
+    })(i);
+  }
+
+  var addBtn = document.createElement('button');
+  addBtn.className = 'btn-sm';
+  addBtn.style.marginTop = '6px';
+  addBtn.textContent = '+ Add Comp';
+  addBtn.addEventListener('click', addComp);
+  el.appendChild(addBtn);
+}
+
+function setCompField(i, field, val) {
+  if (COMPS[i]) {
+    COMPS[i][field] = val;
+    if (field === 'rate_usd' || field === 'url') COMPS[i].live = false; // reset live flag on manual edit
+  }
+}
+
+function addComp() {
+  COMPS.push({ name: '', url: '', rate_usd: null, rating: null, live: false });
+  renderCompEditList(); // rebuild edit rows
+  renderCompsPanel();   // rebuild display cards
+}
+
+function delComp(i) {
+  if (COMPS.length <= 1) return;
+  COMPS.splice(i, 1);
+  renderCompEditList(); // rebuild edit rows
+  renderCompsPanel();   // rebuild display cards
+  build();
+}
+
+function renderCompsPanel() {
+  var fx   = parseInt(document.getElementById('c-fx').value) || 3500;
+  var grid = document.getElementById('comps-grid');
+  if (!grid) return;
+  // Always rebuild edit rows so the inputs reflect the latest COMPS data
+  renderCompEditList();
+  var avg = getCompAvg();
+  var html = '';
+  COMPS.forEach(function(c) {
+    var cop = c.rate_usd ? Math.round(c.rate_usd * fx) : null;
+    html += '<div class="comp-card">'
+      + '<div class="comp-name" title="' + (c.notes || c.name) + '">' + c.name + '</div>'
+      + '<div class="comp-rate">' + (c.rate_usd ? fu(c.rate_usd) + ' USD' : '&mdash;') + '</div>'
+      + '<div class="comp-sub">'  + (cop ? fc(cop) + ' COP' : '') + '</div>'
+      + '<div class="comp-meta">'
+      + (c.rating ? '&#9733; ' + c.rating : 'No rating')
+      + (c.reviews ? ' (' + c.reviews + ')' : '')
+      + ' &middot; <span style="color:' + (c.live ? 'var(--green2)' : 'var(--ink3)') + '">'
+      + (c.live ? 'live' : 'estimate') + '</span></div>'
+      + (c.notes ? '<div style="font-size:9px;color:var(--ink3);margin-top:2px;white-space:normal;line-height:1.3">' + c.notes + '</div>' : '')
+      + '<a href="' + c.url + '" target="_blank" style="font-size:9px;color:var(--ink3);text-decoration:none;margin-top:2px;display:inline-block">&#x2197; view</a>'
+      + '</div>';
+  });
+  html += '<div class="comp-card" style="border-color:var(--gold);background:rgba(184,134,11,.05)">'
+    + '<div class="comp-name">Comp Average</div>'
+    + '<div class="comp-rate" style="color:var(--green2)">' + fu(avg) + ' USD</div>'
+    + '<div class="comp-sub">' + fc(avg * fx) + ' COP</div>'
+    + '<div class="comp-meta">' + COMPS.filter(function(c){return c.rate_usd;}).length + ' comps &middot; Morros KAI 2BR/2BA</div>'
+    + '</div>';
+  grid.innerHTML = html;
+}
+
+// ──────────────────────────────────────────────────────────
+// TABS
+// ──────────────────────────────────────────────────────────
+function renderTabs() {
+  var el = document.getElementById('main-tabs');
+  if (!el) return;
+  var html = YEARS.map(function(y) {
+    var lbl = y.year + ' (' + getYearCoverageLabel(y.year) + ')';
+    return '<div class="tab' + (currentTab === y.year ? ' active' : '') + '" onclick="switchYearContext(' + y.year + ')">' + lbl + '</div>';
+  }).join('');
+  html += '<div class="tab' + (currentTab === 'all' ? ' active' : '') + '" onclick="switchTab(\'all\')">All Years</div>';
+  el.innerHTML = html;
+}
+
+function getYearCoverageLabel(yr) {
+  return 'full year';
+}
+
+function getYearStartDate(yr) {
+  return parseD(yr + '-01-01');
+}
+
+function switchYearContext(yr) {
+  currentTab = yr;
+  activePeakYear = (yr === 'all') ? YEARS[0].year : yr;
+  selectedCompWindow = null;
+  renderTabs();
+  renderPeaksPanel();
+  build();
+}
+
+function switchTab(yr) {
+  switchYearContext(yr);
+}
+
+// ──────────────────────────────────────────────────────────
+// BUILD
+// ──────────────────────────────────────────────────────────
+function build() {
+  var v = getVals();
+  var yearsToShow = currentTab === 'all' ? YEARS : YEARS.filter(function(y) { return y.year === currentTab; });
+
+  // Generate weeks
+  var weeks = [];
+  yearsToShow.forEach(function(yc) {
+    var yr  = yc.year;
+    var d   = getYearStartDate(yr);
+    var end = parseD((yr + 1) + '-01-01');
+    var wi  = 0;
+    while (d < end) {
+      var wEnd = addDays(d, 6);
+      weeks.push({
+        start: new Date(d),
+        end:   wEnd >= end ? addDays(end, -1) : wEnd,
+        year:  yr, wi: wi
+      });
+      d = addDays(d, 7);
+      wi++;
+    }
+  });
+
+  // Compute rows
+  var totalRev = 0, totalNights = 0;
+  var rows = weeks.map(function(w) {
+    var yv        = getYearVals(w.year);
+    var peak      = getPeak(w.start) || getPeak(w.end);
+    var type      = getSeasonType(w.start, w.year);
+    var peakMk    = peak ? peak.markup : 0;
+    var markup    = peakMk - yv.discount;
+    var inf       = infFactor(w.year, w.wi);
+    var infBase   = Math.round(yv.baseRate * inf);
+    var nightlyRate  = Math.round(infBase * (1 + markup / 100));
+    var guestRate    = Math.round(nightlyRate * (1 + yv.airbnbFee / 100));
+    var guestUSD     = guestRate / yv.fx;
+    var nightlyUSD   = nightlyRate / yv.fx;
+    var occ          = getYearOccupancy(w.year, type);
+    var nights       = Math.round(7 * occ);
+    var grossCOP     = nightlyRate * nights;
+    var yourCOP      = grossCOP * yv.cohost;
+    var compUSD      = getCompAvg() * (COMP_MULT[type] !== undefined ? COMP_MULT[type] : 1) * inf;
+    var compCOP      = Math.round(compUSD * yv.fx);
+    var vsComps      = compUSD > 0 ? ((guestUSD - compUSD) / compUSD * 100) : 0;
+
+    totalRev    += yourCOP;
+    totalNights += nights;
+
+    return { start:w.start, end:w.end, year:w.year, wi:w.wi,
+      type:type, peak:peak, markup:markup, peakMk:peakMk,
+      inf:inf, infBase:infBase, nightlyRate:nightlyRate, nightlyUSD:nightlyUSD,
+      guestRate:guestRate, guestUSD:guestUSD,
+      compUSD:compUSD, compCOP:compCOP, vsComps:vsComps,
+      occ:occ, nights:nights, grossCOP:grossCOP, yourCOP:yourCOP,
+      fx:yv.fx, discount:yv.discount, airbnbFee:yv.airbnbFee, cohost:yv.cohost, baseRate:yv.baseRate };
+  });
+
+  latestRows = rows;
+  var selectedStillVisible = false;
+  if (selectedCompWindow && rows.length) {
+    selectedStillVisible = rows.some(function(r) {
+      return toISO(r.start) === selectedCompWindow.checkIn;
+    });
+  }
+  if ((!selectedCompWindow || !selectedStillVisible) && rows.length) {
+    selectedCompWindow = {
+      checkIn: toISO(rows[0].start),
+      checkOut: toISO(addDays(rows[0].end, 1)),
+      label: fmtSpan(rows[0].start, rows[0].end)
+    };
+  }
+  renderSummary(rows, totalRev, v);
+  renderTable(rows, v);
+  updateCompWeekLabel();
+}
+
+// ──────────────────────────────────────────────────────────
+// SUMMARY CARDS
+// ──────────────────────────────────────────────────────────
+function renderSummary(rows, totalRev, v) {
+  if (!rows.length) { document.getElementById('summary').innerHTML = ''; return; }
+  var avg  = rows.reduce(function(s,r){return s+r.nightlyRate;},0) / rows.length;
+  var avgG = rows.reduce(function(s,r){return s+r.guestRate;},0)   / rows.length;
+  var maxR = rows.reduce(function(m,r){return Math.max(m,r.nightlyRate);}, 0);
+  var minR = rows.reduce(function(m,r){return Math.min(m,r.nightlyRate);}, Infinity);
+
+  var summaryYears = currentTab === 'all' ? YEARS : YEARS.filter(function(y) { return y.year === currentTab; });
+  var infCards = summaryYears.map(function(y) {
+    return '<div class="sc"><div class="sc-lbl">' + y.year + ' Inflation</div>'
+      + '<div class="sc-val">' + y.inflation + '%</div><div class="sc-sub">Banrep forecast</div></div>';
+  }).join('');
+
+  var wkLabel = YEARS.map(function(y) {
+    var n = rows.filter(function(r){return r.year===y.year;}).length;
+    return n > 0 ? n + ' in ' + y.year : '';
+  }).filter(Boolean).join(' \u00b7 ');
+
+  var selectedYear = currentTab === 'all' ? YEARS[0].year : currentTab;
+  var sv = getYearVals(selectedYear);
+  var sy = getYearConfig(selectedYear) || {};
+  var regularOcc = sy.occupancy && sy.occupancy.regular !== undefined ? sy.occupancy.regular : Math.round(OCC.regular * 100);
+  var peakOcc = sy.occupancy && sy.occupancy.peak !== undefined ? sy.occupancy.peak : Math.round(OCC.peak * 100);
+
+  var viewingLabel = currentTab === 'all' ? 'All Years' : String(currentTab);
+  var viewingSub = currentTab === 'all'
+    ? YEARS.length + ' year view'
+    : rows.length + ' weeks';
+
+  document.getElementById('summary').innerHTML = ''
+    + '<div class="sc"><div class="sc-lbl">Viewing</div><div class="sc-val">' + viewingLabel + '</div><div class="sc-sub">' + viewingSub + '</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Base Rate</div><div class="sc-val">' + fc(sv.baseRate) + '</div><div class="sc-sub">COP &middot; ' + fu(sv.baseRate/sv.fx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Avg Your Rate</div><div class="sc-val">' + fc(avg) + '</div><div class="sc-sub">COP &middot; ' + fu(avg/sv.fx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Avg Guest Rate</div><div class="sc-val">' + fc(avgG) + '</div><div class="sc-sub">COP &middot; ' + fu(avgG/sv.fx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Peak (NYE)</div><div class="sc-val">' + fc(maxR) + '</div><div class="sc-sub">COP &middot; ' + fu(maxR/sv.fx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Floor Rate</div><div class="sc-val">' + fc(minR) + '</div><div class="sc-sub">COP &middot; ' + fu(minR/sv.fx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Comp Avg</div><div class="sc-val">$' + getCompAvg().toFixed(0) + '</div><div class="sc-sub">USD &middot; ' + COMPS.filter(function(c){return c.rate_usd;}).length + ' Morros KAI comps</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Flat Discount</div><div class="sc-val">' + sv.discount + '%</div><div class="sc-sub">Selected year</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Airbnb Fee</div><div class="sc-val">' + sv.airbnbFee + '%</div><div class="sc-sub">Guest add-on</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Regular Occ.</div><div class="sc-val">' + regularOcc + '%</div><div class="sc-sub">' + selectedYear + ' default</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Peak Occ.</div><div class="sc-val">' + peakOcc + '%</div><div class="sc-sub">' + selectedYear + ' default</div></div>'
+    + infCards
+    + '<div class="sc"><div class="sc-lbl">Weeks Shown</div><div class="sc-val">' + rows.length + '</div><div class="sc-sub">' + wkLabel + '</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Est. Revenue</div><div class="sc-val" style="font-size:15px">' + fc(totalRev) + '</div><div class="sc-sub">COP your share</div></div>';
+}
+
+// ──────────────────────────────────────────────────────────
+// TABLE
+// ──────────────────────────────────────────────────────────
+function renderTable(rows, v) {
+  var NC = 18;
+  var html = '<table><thead><tr>'
+    + '<th>#</th><th>Week</th><th>Month</th><th>Season</th>'
+    + '<th class="r">Inf Factor</th><th class="r">Inf Base (COP)</th><th class="r">Markup</th>'
+    + '<th class="r">Your Rate (COP)</th><th class="r">Your Rate (USD)</th>'
+    + '<th class="r">Guest Rate (COP)</th><th class="r">Guest Rate (USD)</th>'
+    + '<th class="r">Comp (USD)</th><th class="r">Comp (COP)</th><th class="r">vs Comps</th>'
+    + '<th class="r">Nights/wk</th><th class="r">Gross (COP)</th><th class="r">Your Share (COP)</th>'
+    + '<th>Notes</th>'
+    + '</tr></thead><tbody>';
+
+  var lastYear = -1, lastMonth = -1, wn = 1;
+
+  rows.forEach(function(r, idx) {
+    var yr = r.start.getFullYear();
+    var mo = r.start.getMonth();
+
+    if (yr !== lastYear) {
+      var yc = null;
+      for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === yr) { yc = YEARS[i]; break; } }
+      var yvHdr = getYearVals(yr);
+      var ovBadges = [];
+      var ovObj = yc ? (yc.overrides || {}) : {};
+      if (ovObj.baseRate  !== null && ovObj.baseRate  !== undefined) ovBadges.push('Base: ' + new Intl.NumberFormat('es-CO').format(ovObj.baseRate) + ' COP');
+      if (ovObj.fx        !== null && ovObj.fx        !== undefined) ovBadges.push('FX: ' + ovObj.fx);
+      if (ovObj.cohost    !== null && ovObj.cohost    !== undefined) ovBadges.push('Co-host: ' + ovObj.cohost + '%');
+      if (ovObj.discount  !== null && ovObj.discount  !== undefined) ovBadges.push('Disc: ' + ovObj.discount + '%');
+      if (ovObj.airbnbFee !== null && ovObj.airbnbFee !== undefined) ovBadges.push('ABnb: ' + ovObj.airbnbFee + '%');
+      html += '<tr class="yr-hdr"><td colspan="' + NC + '">' + yr
+        + '&nbsp;&middot;&nbsp;<span style="font-size:11px;font-family:JetBrains Mono,monospace;color:#9a8f7e;font-weight:400">'
+        + 'Inflation: ' + (yc ? yc.inflation : '?') + '%'
+        + (ovBadges.length ? ' &nbsp;&middot;&nbsp; <span style="color:var(--blue2)">' + ovBadges.join(' &middot; ') + '</span>' : '')
+        + ' &middot; Banco de la República</span>'
+        + '</td></tr>';
+      lastYear = yr; lastMonth = -1; wn = 1;
+    }
+
+    if (mo !== lastMonth) {
+      html += '<tr class="mo-hdr"><td colspan="' + NC + '">' + MONTHS_FULL[mo] + ' ' + yr + '</td></tr>';
+      lastMonth = mo;
+    }
+
+    var bc  = r.type==='nye'?'b-nye': r.type==='peak'?'b-peak': r.type==='low'?'b-low':'b-reg';
+    var disc = v.discount > 0 ? ' \u2212' + v.discount + '%' : '';
+    var bt  = r.type==='nye'  ? 'NYE +' + r.peakMk + '%' + disc
+            : r.type==='peak' ? 'Peak +' + r.peakMk + '%' + disc
+            : r.type==='low'  ? 'Low' + disc
+            :                   'Regular' + disc;
+
+    var infPct = ((r.inf - 1) * 100).toFixed(2);
+    var notes  = (r.peak ? r.peak.label : (r.type === 'low' ? 'Low demand' : 'Regular season'))
+               + (v.discount > 0 ? ' &middot; &minus;' + v.discount + '% disc' : '');
+    var vsCol  = r.vsComps > 10 ? 'var(--red2)' : r.vsComps < -10 ? 'var(--green2)' : 'var(--ink2)';
+
+    var isSel = selectedCompWindow && selectedCompWindow.checkIn === toISO(r.start);
+    html += '<tr class="' + r.type + (isSel ? ' sel' : '') + '" onclick="selectCompWeek(' + idx + ', false)" style="cursor:pointer">'
+      + '<td class="muted">' + (wn++) + '</td>'
+      + '<td>' + fmtSpan(r.start, r.end) + '</td>'
+      + '<td class="muted">' + MONTHS_SHORT[mo] + ' ' + yr + '</td>'
+      + '<td><span class="badge ' + bc + '">' + bt + '</span></td>'
+      + '<td class="r inf-adj">&times;' + r.inf.toFixed(4) + ' <span style="font-size:9px">(+' + infPct + '%)</span></td>'
+      + '<td class="r inf-adj">' + fc(r.infBase) + '</td>'
+      + '<td class="r" style="color:var(--gold)">' + (r.markup !== 0 ? fp(r.markup) : '&mdash;') + '</td>'
+      + '<td class="r" style="font-weight:600">' + fc(r.nightlyRate) + '</td>'
+      + '<td class="r muted">' + fu(r.nightlyUSD) + '</td>'
+      + '<td class="r gold-val">' + fc(r.guestRate) + '</td>'
+      + '<td class="r" style="color:var(--gold2)">' + fu(r.guestUSD) + '</td>'
+      + '<td class="r" style="color:var(--blue2)">' + fu(r.compUSD) + '</td>'
+      + '<td class="r" style="color:var(--blue2)">' + fc(r.compCOP) + '</td>'
+      + '<td class="r" style="color:' + vsCol + ';font-weight:500">' + (r.vsComps > 0 ? '+' : '') + r.vsComps.toFixed(0) + '%</td>'
+      + '<td class="r">' + r.nights + ' <span style="font-size:9px;color:var(--ink3)">(' + Math.round(r.occ*100) + '%)</span></td>'
+      + '<td class="r">' + fc(r.grossCOP) + '</td>'
+      + '<td class="r" style="font-weight:600">' + fc(r.yourCOP) + '</td>'
+      + '<td style="color:var(--ink3);font-size:10px">' + notes + '</td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table>';
+
+  // Footnote
+  var links = COMPS.map(function(c) {
+    return '<a href="' + c.url + '" target="_blank" style="color:var(--blue2);text-decoration:none">'
+      + c.name + ' ($' + (c.rate_usd || '?') + ')</a>';
+  }).join(' &middot; ');
+
+  html += '<div style="margin-top:12px;background:rgba(26,74,122,.05);border:1px solid rgba(26,74,122,.2);'
+    + 'border-radius:6px;padding:10px 14px;font-size:10px;color:var(--ink2);line-height:1.8;">'
+    + '<strong style="color:var(--blue)">Comp Rate:</strong> Market avg $' + getCompAvg().toFixed(0)
+    + ' USD from ' + COMPS.length + ' ' + (PROPERTY.building || 'property') + ' ' + (PROPERTY.bedrooms||2) + 'BR/' + (PROPERTY.bathrooms||2) + 'BA comps. '
+    + 'Peak/NYE/Low apply same multipliers as your property. Inflation compounded weekly. '
+    + '<strong>vs Comps</strong>: green = below market (room to raise), red = above (5&#9733; rating justifies premium). '
+    + '<br><strong>Sources:</strong> ' + links + '</div>';
+
+  document.getElementById('tbl-container').innerHTML = html;
+}
+
+// ──────────────────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────────────────
+// Seed inputs from CFG defaults
+document.getElementById('c-base').value   = CFG.baseRate;
+document.getElementById('c-fx').value     = CFG.fx;
+document.getElementById('c-cohost').value = CFG.cohost;
+document.getElementById('c-disc').value   = CFG.discount;
+document.getElementById('c-airbnb').value = CFG.airbnbFee;
+
+// Sync same-building checkbox from COMP_FLAGS default
+var sbEl = document.getElementById('c-same-building');
+if (sbEl) sbEl.checked = COMP_FLAGS.sameBuilding;
+
+// Render all panels in correct dependency order
+updateInfDisplay();    // inflation display string
+renderPropertyPanel(); // property profile fields + amenity chips
+updateTopHeader();    // dynamic header from property profile
+renderTabs();          // year tabs above table
+renderPeaksPanel();    // peak seasons per year
+renderCompEditList();  // editable comp URL rows
+renderCompsPanel();    // comp rate cards
+build();               // table + summary
 </script>
 
+<script>
+const SUPABASE_URL = (window.APP_CONFIG && window.APP_CONFIG.SUPABASE_URL) || window.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = (window.APP_CONFIG && window.APP_CONFIG.SUPABASE_ANON_KEY) || window.SUPABASE_ANON_KEY || '';
+const supabaseClient = (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+var AUTH_STATE = {
+  session: null,
+  user: null,
+  currentSlug: '',
+  autosaveTimer: null,
+  isApplying: false
+};
+
+function slugifyProperty() {
+  var parts = [PROPERTY.building, PROPERTY.unit, PROPERTY.neighborhood, PROPERTY.city, PROPERTY.country]
+    .filter(Boolean)
+    .join('-')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return parts || 'default-property';
+}
+
+function getCurrentPropertyName() {
+  return [PROPERTY.building || 'Property', PROPERTY.unit || ''].join(' ').trim();
+}
+
+function collectAppSettings() {
+  return {
+    CFG: JSON.parse(JSON.stringify(CFG)),
+    PROPERTY: JSON.parse(JSON.stringify(PROPERTY)),
+    YEARS: JSON.parse(JSON.stringify(YEARS)),
+    COMPS: JSON.parse(JSON.stringify(COMPS)),
+    currentTab: currentTab,
+    activePeakYear: activePeakYear,
+    selectedCompWindow: selectedCompWindow,
+    sameBuildingOnly: document.getElementById('c-same-building') ? document.getElementById('c-same-building').checked : true,
+    compLocation: document.getElementById('c-location') ? document.getElementById('c-location').value : ''
+  };
+}
+
+function applyAppSettings(payload) {
+  if (!payload) return;
+  AUTH_STATE.isApplying = true;
+  try {
+    if (payload.CFG) CFG = payload.CFG;
+    if (payload.PROPERTY) PROPERTY = payload.PROPERTY;
+    if (Array.isArray(payload.YEARS)) YEARS = payload.YEARS;
+    if (Array.isArray(payload.COMPS)) COMPS = payload.COMPS;
+    if (payload.currentTab !== undefined) currentTab = payload.currentTab;
+    if (payload.activePeakYear !== undefined) activePeakYear = payload.activePeakYear;
+    if (payload.selectedCompWindow !== undefined) selectedCompWindow = payload.selectedCompWindow;
+
+    document.getElementById('c-base').value   = CFG.baseRate;
+    document.getElementById('c-fx').value     = CFG.fx;
+    document.getElementById('c-cohost').value = CFG.cohost;
+    document.getElementById('c-disc').value   = CFG.discount;
+    document.getElementById('c-airbnb').value = CFG.airbnbFee;
+    if (document.getElementById('c-location') && payload.compLocation !== undefined) {
+      document.getElementById('c-location').value = payload.compLocation || '';
+    }
+    if (document.getElementById('c-same-building') && payload.sameBuildingOnly !== undefined) {
+      document.getElementById('c-same-building').checked = !!payload.sameBuildingOnly;
+    }
+
+    updateInfDisplay();
+    renderPropertyPanel();
+    updateTopHeader();
+    renderTabs();
+    renderPeaksPanel();
+    renderCompEditList();
+    renderCompsPanel();
+    build();
+  } finally {
+    setTimeout(function(){ AUTH_STATE.isApplying = false; }, 250);
+  }
+}
+
+async function signInWithProvider(provider) {
+  if (!supabaseClient) return alert('Supabase is not configured yet. Add your URL and anon key in app-config.js.');
+  var redirectTo = window.location.origin + window.location.pathname;
+  var result = await supabaseClient.auth.signInWithOAuth({ provider: provider, options: { redirectTo: redirectTo } });
+  if (result.error) alert(result.error.message);
+}
+
+async function signOutUser() {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  AUTH_STATE.session = null;
+  AUTH_STATE.user = null;
+  AUTH_STATE.currentSlug = '';
+  renderAuthState();
+  renderSavedProperties([]);
+}
+
+function renderSavedProperties(items) {
+  var wrap = document.getElementById('saved-properties-wrap');
+  var sel = document.getElementById('saved-property-select');
+  if (!wrap || !sel) return;
+  if (!AUTH_STATE.user || !items || !items.length) {
+    wrap.style.display = AUTH_STATE.user ? 'flex' : 'none';
+    sel.innerHTML = '<option value="">No saved properties yet</option>';
+    return;
+  }
+  wrap.style.display = 'flex';
+  sel.innerHTML = items.map(function(item){
+    var selected = item.slug === AUTH_STATE.currentSlug ? ' selected' : '';
+    return '<option value="' + item.slug + '"' + selected + '>' + item.name + ' · ' + new Date(item.updated_at).toLocaleDateString() + '</option>';
+  }).join('');
+}
+
+function renderAuthState() {
+  var status = document.getElementById('auth-status');
+  var controls = document.getElementById('auth-controls');
+  var wrap = document.getElementById('saved-properties-wrap');
+  if (!status || !controls) return;
+
+  if (!supabaseClient) {
+    status.textContent = 'Supabase not configured';
+    controls.innerHTML = '<span style="font-size:10px;color:var(--red2)">Create app-config.js with SUPABASE_URL and SUPABASE_ANON_KEY.</span>';
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+
+  if (AUTH_STATE.user) {
+    status.textContent = 'Signed in as ' + (AUTH_STATE.user.email || AUTH_STATE.user.id);
+    controls.innerHTML = ''
+      + '<button class="btn-sm" onclick="savePropertyForCurrentUser()">Save now</button>'
+      + '<button class="btn-sm" onclick="savePropertyAsNew()">Save as new</button>'
+      + '<button class="btn-sm" onclick="signOutUser()">Sign out</button>';
+  } else {
+    status.textContent = 'Not signed in';
+    controls.innerHTML = ''
+      + '<button class="btn-sm" onclick="signInWithProvider(\'google\')">Continue with Google</button>'
+      + '<button class="btn-sm" onclick="signInWithProvider(\'apple\')">Continue with Apple</button>';
+    if (wrap) wrap.style.display = 'none';
+  }
+}
+
+async function listPropertiesForCurrentUser() {
+  if (!supabaseClient || !AUTH_STATE.user) return [];
+  var result = await supabaseClient
+    .from('user_properties')
+    .select('slug,name,updated_at')
+    .eq('user_id', AUTH_STATE.user.id)
+    .order('updated_at', { ascending: false });
+  if (result.error) {
+    console.error(result.error);
+    return [];
+  }
+  return result.data || [];
+}
+
+async function refreshSavedPropertiesList() {
+  var items = await listPropertiesForCurrentUser();
+  renderSavedProperties(items);
+}
+
+async function savePropertyForCurrentUser(customSlug, customName) {
+  if (!supabaseClient || !AUTH_STATE.user) return alert('Please sign in first.');
+  var slug = customSlug || AUTH_STATE.currentSlug || slugifyProperty();
+  AUTH_STATE.currentSlug = slug;
+  var name = customName || getCurrentPropertyName();
+  var payload = collectAppSettings();
+
+  var result = await supabaseClient
+    .from('user_properties')
+    .upsert({
+      user_id: AUTH_STATE.user.id,
+      slug: slug,
+      name: name,
+      settings: payload
+    }, { onConflict: 'user_id,slug' });
+
+  if (result.error) {
+    console.error(result.error);
+    alert('Save failed: ' + result.error.message);
+    return;
+  }
+  await refreshSavedPropertiesList();
+}
+
+async function savePropertyAsNew() {
+  if (!AUTH_STATE.user) return alert('Please sign in first.');
+  var suggested = slugifyProperty();
+  var slug = prompt('Save as new property slug:', suggested);
+  if (!slug) return;
+  slug = slug.toLowerCase().replace(/[^a-z0-9\-]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!slug) return alert('Please enter a valid slug.');
+  var name = prompt('Display name for this saved property:', getCurrentPropertyName()) || getCurrentPropertyName();
+  await savePropertyForCurrentUser(slug, name);
+}
+
+async function loadPropertyForCurrentUser(slug) {
+  if (!supabaseClient || !AUTH_STATE.user) return alert('Please sign in first.');
+  var targetSlug = slug || AUTH_STATE.currentSlug || slugifyProperty();
+  var result = await supabaseClient
+    .from('user_properties')
+    .select('slug,name,settings,updated_at')
+    .eq('user_id', AUTH_STATE.user.id)
+    .eq('slug', targetSlug)
+    .maybeSingle();
+
+  if (result.error) {
+    console.error(result.error);
+    alert('Load failed: ' + result.error.message);
+    return;
+  }
+  if (!result.data) {
+    alert('No saved property found for this account yet.');
+    return;
+  }
+  AUTH_STATE.currentSlug = result.data.slug;
+  applyAppSettings(result.data.settings);
+  await refreshSavedPropertiesList();
+}
+
+function loadSelectedPropertyFromAccount() {
+  var sel = document.getElementById('saved-property-select');
+  if (!sel || !sel.value) return;
+  loadPropertyForCurrentUser(sel.value);
+}
+
+function scheduleAutoSave() {
+  if (!AUTH_STATE.user || AUTH_STATE.isApplying) return;
+  clearTimeout(AUTH_STATE.autosaveTimer);
+  AUTH_STATE.autosaveTimer = setTimeout(function(){
+    savePropertyForCurrentUser().catch(function(err){ console.error(err); });
+  }, 1200);
+}
+
+async function bootAuth() {
+  renderAuthState();
+  if (!supabaseClient) return;
+
+  var sessionResult = await supabaseClient.auth.getSession();
+  AUTH_STATE.session = sessionResult.data.session;
+  AUTH_STATE.user = sessionResult.data.session ? sessionResult.data.session.user : null;
+  AUTH_STATE.currentSlug = slugifyProperty();
+  renderAuthState();
+  if (AUTH_STATE.user) {
+    await refreshSavedPropertiesList();
+    await loadPropertyForCurrentUser(AUTH_STATE.currentSlug).catch(function(){});
+  }
+
+  supabaseClient.auth.onAuthStateChange(async function(_event, session) {
+    AUTH_STATE.session = session;
+    AUTH_STATE.user = session ? session.user : null;
+    AUTH_STATE.currentSlug = slugifyProperty();
+    renderAuthState();
+    if (AUTH_STATE.user) {
+      await refreshSavedPropertiesList();
+      await loadPropertyForCurrentUser(AUTH_STATE.currentSlug).catch(function(){});
+    } else {
+      renderSavedProperties([]);
+    }
+  });
+
+  document.addEventListener('input', function(){ scheduleAutoSave(); });
+  document.addEventListener('change', function(){ scheduleAutoSave(); });
+}
+</script>
+
+<script>bootAuth();</script>
 </body>
 </html>
