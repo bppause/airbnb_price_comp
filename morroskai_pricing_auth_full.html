@@ -280,6 +280,8 @@ var YEARS = [
     // Per-year overrides (null = inherit from global CFG)
     overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
     occupancy: { regular:55, peak:78 },
+    monthlyOperatingExpenses: 9800000,
+    monthlyOtherIncome: 1000000,
     peaks: [
       { start:'2026-04-01', end:'2026-04-05',  markup:30,  label:'Easter' },
       { start:'2026-06-15', end:'2026-08-01',  markup:30,  label:'Summer High Season' },
@@ -295,6 +297,8 @@ var YEARS = [
     lowMonths: [4,7,8,9],
     overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
     occupancy: { regular:55, peak:78 },
+    monthlyOperatingExpenses: 9800000,
+    monthlyOtherIncome: 1000000,
     peaks: [
       { start:'2027-01-03', end:'2027-01-20',  markup:100, label:'January High Demand' },
       { start:'2027-04-14', end:'2027-04-18',  markup:30,  label:'Easter' },
@@ -408,6 +412,26 @@ function setYearOccupancy(yr, field, val) {
       break;
     }
   }
+}
+
+function getYearMonthlyOperatingExpenses(year) {
+  var yc = getYearConfig(year);
+  return yc && yc.monthlyOperatingExpenses !== undefined ? yc.monthlyOperatingExpenses : 9800000;
+}
+
+function getYearMonthlyOtherIncome(year) {
+  var yc = getYearConfig(year);
+  return yc && yc.monthlyOtherIncome !== undefined ? yc.monthlyOtherIncome : 1000000;
+}
+
+function setYearMonthlyValue(yr, field, val, dflt) {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === yr) {
+      YEARS[i][field] = isNaN(val) ? dflt : val;
+      break;
+    }
+  }
+  build();
 }
 
 function getCompAvg() {
@@ -792,8 +816,23 @@ function renderPeaksPanel() {
     + '<span style="font-size:9px;color:var(--ink3)">Banrep forecast — weekly compound</span>'
     + '<button class="btn-sm" style="margin-left:auto" onclick="addPeak()">+ Add Period</button>';
 
-  // Per-year overrides row
+  // Per-year finance row
   html += '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px;'
+    + 'background:rgba(42,102,64,.04);border:1px solid rgba(42,102,64,.15);border-radius:6px;padding:10px 12px;">'
+    + '<div style="grid-column:1/-1;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--green2);margin-bottom:4px">'
+    + yr + ' Monthly Operations & Income</div>'
+    + '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">Operating Expenses / Month (COP)</div>'
+    + '<input type="number" value="' + getYearMonthlyOperatingExpenses(yr) + '" min="0" step="100000" '
+    + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
+    + 'onchange="setYearMonthlyValue(' + yr + ',\'monthlyOperatingExpenses\', parseFloat(this.value)||9800000, 9800000)"></div>'
+    + '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">Other Income / Month (COP)</div>'
+    + '<input type="number" value="' + getYearMonthlyOtherIncome(yr) + '" min="0" step="100000" '
+    + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
+    + 'onchange="setYearMonthlyValue(' + yr + ',\'monthlyOtherIncome\', parseFloat(this.value)||1000000, 1000000)"></div>';
+
+  // Per-year overrides row
+  html += ''
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px;'
     + 'background:rgba(26,74,122,.04);border:1px solid rgba(26,74,122,.15);border-radius:6px;padding:10px 12px;">'
     + '<div style="grid-column:1/-1;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue2);margin-bottom:4px">'
@@ -930,7 +969,7 @@ function addYear() {
     return { start: bumpYear(p.start), end: bumpYear(p.end), markup: p.markup, label: p.label };
   });
   var newInf = Math.max(3.0, parseFloat((last.inflation - 0.5).toFixed(1)));
-  YEARS.push({ year: ny, inflation: newInf, lowMonths: [4,7,8,9], occupancy: { regular: (last.occupancy && last.occupancy.regular !== undefined ? last.occupancy.regular : 55), peak: (last.occupancy && last.occupancy.peak !== undefined ? last.occupancy.peak : 78) }, peaks: newPeaks });
+  YEARS.push({ year: ny, inflation: newInf, lowMonths: [4,7,8,9], occupancy: { regular: (last.occupancy && last.occupancy.regular !== undefined ? last.occupancy.regular : 55), peak: (last.occupancy && last.occupancy.peak !== undefined ? last.occupancy.peak : 78) }, monthlyOperatingExpenses: (last.monthlyOperatingExpenses !== undefined ? last.monthlyOperatingExpenses : 9800000), monthlyOtherIncome: (last.monthlyOtherIncome !== undefined ? last.monthlyOtherIncome : 1000000), peaks: newPeaks });
   activePeakYear = ny;
   renderTabs();
   renderPeaksPanel();
@@ -1236,6 +1275,13 @@ function renderSummary(rows, totalRev, v) {
   var sy = getYearConfig(selectedYear) || {};
   var regularOcc = sy.occupancy && sy.occupancy.regular !== undefined ? sy.occupancy.regular : Math.round(OCC.regular * 100);
   var peakOcc = sy.occupancy && sy.occupancy.peak !== undefined ? sy.occupancy.peak : Math.round(OCC.peak * 100);
+  var annualOperatingExpenses = summaryYears.reduce(function(sum, y) {
+    return sum + (getYearMonthlyOperatingExpenses(y.year) * 12);
+  }, 0);
+  var annualOtherIncome = summaryYears.reduce(function(sum, y) {
+    return sum + (getYearMonthlyOtherIncome(y.year) * 12);
+  }, 0);
+  var netIncome = totalRev + annualOtherIncome - annualOperatingExpenses;
 
   var viewingLabel = currentTab === 'all' ? 'All Years' : String(currentTab);
   var viewingSub = currentTab === 'all'
@@ -1256,7 +1302,10 @@ function renderSummary(rows, totalRev, v) {
     + '<div class="sc"><div class="sc-lbl">Peak Occ.</div><div class="sc-val">' + peakOcc + '%</div><div class="sc-sub">' + selectedYear + ' default</div></div>'
     + infCards
     + '<div class="sc"><div class="sc-lbl">Weeks Shown</div><div class="sc-val">' + rows.length + '</div><div class="sc-sub">' + wkLabel + '</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Est. Revenue</div><div class="sc-val" style="font-size:15px">' + fc(totalRev) + '</div><div class="sc-sub">COP your share</div></div>';
+    + '<div class="sc"><div class="sc-lbl">Est. Revenue</div><div class="sc-val" style="font-size:15px">' + fc(totalRev) + '</div><div class="sc-sub">COP your share</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Annual Operating Expenses</div><div class="sc-val" style="font-size:15px">' + fc(annualOperatingExpenses) + '</div><div class="sc-sub">COP · ' + summaryYears.length + ' year' + (summaryYears.length > 1 ? 's' : '') + '</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Annual Other Income</div><div class="sc-val" style="font-size:15px">' + fc(annualOtherIncome) + '</div><div class="sc-sub">COP · recurring monthly</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Net Income</div><div class="sc-val" style="font-size:15px">' + fc(netIncome) + '</div><div class="sc-sub">COP · revenue + other income − operating expenses</div></div>';
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1435,6 +1484,10 @@ function applyAppSettings(payload) {
     if (payload.PROPERTY) PROPERTY = payload.PROPERTY;
     if (Array.isArray(payload.YEARS)) YEARS = payload.YEARS;
     if (Array.isArray(payload.COMPS)) COMPS = payload.COMPS;
+    YEARS.forEach(function(y) {
+      if (y.monthlyOperatingExpenses === undefined) y.monthlyOperatingExpenses = 9800000;
+      if (y.monthlyOtherIncome === undefined) y.monthlyOtherIncome = 1000000;
+    });
     if (payload.currentTab !== undefined) currentTab = payload.currentTab;
     if (payload.activePeakYear !== undefined) activePeakYear = payload.activePeakYear;
     if (payload.selectedCompWindow !== undefined) selectedCompWindow = payload.selectedCompWindow;
