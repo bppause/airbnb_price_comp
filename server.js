@@ -1,19 +1,21 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import "dotenv/config";
 
-
-
-const app = express();
-
-// IMPORTANT for Render / cloud deploy
-const PORT = process.env.PORT || 3000;
-
-// Resolve paths (ESM)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const app = express();
+app.use(express.json({ limit: "1mb" }));
+
+const PORT = process.env.PORT || 3000;
+
+// 👉 change this if you rename HTML
+const HTML_FILE = process.env.HTML_FILE || "morroskai_pricing_auth_autosave_merged.html";
+
+// =====================================================
+// 🔐 SUPABASE CONFIG (served to browser)
+// =====================================================
 app.get("/app-config.js", (req, res) => {
   res.setHeader("Content-Type", "application/javascript");
   res.send(`
@@ -22,117 +24,90 @@ app.get("/app-config.js", (req, res) => {
   `);
 });
 
-// Middleware
-app.use(express.json());
+// =====================================================
+// 🧠 COMPS API (uses optional APIFY)
+// =====================================================
+const APIFY_TOKEN = process.env.APIFY_TOKEN || "";
 
-// ---- Serve static files (for HTML, config, etc) ----
-app.use(express.static(__dirname));
-
-// ---- Serve main app ----
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "morroskai_pricing_auth_full.html"));
-});
-
-// ---- Health check ----
-app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true,
-    hasToken: !!process.env.APIFY_TOKEN,
-    hasSyncUrl: !!process.env.APIFY_SYNC_URL,
-    environment: process.env.NODE_ENV || "local",
-  });
-});
-
-// ---- Fetch Airbnb comps ----
 app.post("/api/comps/search", async (req, res) => {
   try {
-    console.log("👉 Fetching comps...");
+    const { property, sameBuilding, stayWindow } = req.body || {};
 
-    const { location } = req.body || {};
-
-    if (!process.env.APIFY_SYNC_URL) {
-      throw new Error("APIFY_SYNC_URL not set in .env");
+    if (!property) {
+      return res.status(400).json({ error: "Missing property" });
     }
 
-    const searchLocation =
-      location || "Playa Manzanillo, Cartagena, Colombia";
-
-    const response = await fetch(process.env.APIFY_SYNC_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        location: searchLocation,
-        maxItems: 10,
-      }),
-    });
-
-    const raw = await response.json();
-    console.log("RAW APIFY:", raw);
-
-    // Normalize response
-    let items = [];
-    if (Array.isArray(raw)) {
-      items = raw;
-    } else if (raw?.items && Array.isArray(raw.items)) {
-      items = raw.items;
-    } else if (raw?.data && Array.isArray(raw.data)) {
-      items = raw.data;
-    }
-
-    if (!items.length) {
-      console.log("❌ No listings returned from provider");
-
+    // fallback if no API
+    if (!APIFY_TOKEN) {
       return res.json({
+        provider: "fallback",
         comps: [],
-        search_summary: "No listings returned",
-        market_avg_usd: null,
+        search_summary: "No APIFY_TOKEN set — using manual comps"
       });
     }
 
-    // Map to your app format
-    const comps = items.slice(0, 10).map((it, i) => ({
-      name: it.name || it.title || `Listing ${i + 1}`,
-      url: it.url || it.link || "",
-      rate_usd:
-        it.price?.amount ||
-        it.price ||
-        it.pricing?.rate ||
-        null,
-      rating: it.rating || it.stars || null,
-      reviews: it.reviews || it.reviewsCount || null,
-      found: true,
+    // Example placeholder (replace with real actor if needed)
+    const apiUrl = `https://api.apify.com/v2/acts/kaix~airbnb-listing-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
+
+    const payload = {
+      location: property.city || "Cartagena",
+      maxListings: 8
+    };
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    const comps = (data || []).map((item) => ({
+      name: item.name || "Listing",
+      url: item.url,
+      rate_usd: item.price || null,
+      rating: item.rating || null,
+      live: true
     }));
 
-    const valid = comps.filter((c) => c.rate_usd);
-    const avg = valid.length
-      ? valid.reduce((s, c) => s + c.rate_usd, 0) / valid.length
-      : null;
-
     res.json({
+      provider: "Apify",
       comps,
-      search_summary: `Live comps for ${searchLocation}`,
-      market_avg_usd: avg,
+      search_summary: `${comps.length} comps loaded`
     });
-  } catch (err) {
-    console.error("❌ ERROR:", err.message);
 
+  } catch (err) {
     res.status(500).json({
-      error: true,
-      message: err.message,
+      error: err.message || "Server error"
     });
   }
 });
 
-// ---- Optional: catch-all route (for SPA behavior if needed) ----
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "morroskai_pricing_auth_full.html"));
+// =====================================================
+// 📁 STATIC FILES
+// =====================================================
+app.use(express.static(__dirname));
+
+// =====================================================
+// 🏠 ROOT ROUTE
+// =====================================================
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, HTML_FILE));
 });
 
-// ---- Start server ----
+// =====================================================
+// ❤️ HEALTH CHECK
+// =====================================================
+app.get("/api/health", (req, res) => {
+  res.json({
+    ok: true,
+    supabaseConfigured: !!process.env.SUPABASE_URL
+  });
+});
+
+// =====================================================
+// 🚀 START SERVER
+// =====================================================
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log("🔑 API key loaded:", !!process.env.APIFY_TOKEN);
-  console.log("🔗 APIFY_SYNC_URL set:", !!process.env.APIFY_SYNC_URL);
+  console.log(`Server running on port ${PORT}`);
 });
