@@ -1595,18 +1595,38 @@ async function loadPropertyForCurrentUser(slug) {
     return;
   }
   if (!result.data) {
-    alert('No saved property found for this account yet.');
-    return;
+    return null;
   }
   AUTH_STATE.currentSlug = result.data.slug;
   applyAppSettings(result.data.settings);
   await refreshSavedPropertiesList();
+  return result.data;
 }
 
 function loadSelectedPropertyFromAccount() {
   var sel = document.getElementById('saved-property-select');
   if (!sel || !sel.value) return;
   loadPropertyForCurrentUser(sel.value);
+}
+
+async function ensureCurrentPropertyExists() {
+  if (!supabaseClient || !AUTH_STATE.user) return;
+  var slug = AUTH_STATE.currentSlug || slugifyProperty();
+  var existing = await supabaseClient
+    .from('user_properties')
+    .select('slug')
+    .eq('user_id', AUTH_STATE.user.id)
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (existing.error) {
+    console.error(existing.error);
+    return;
+  }
+
+  if (!existing.data) {
+    await savePropertyForCurrentUser(slug, getCurrentPropertyName());
+  }
 }
 
 function scheduleAutoSave() {
@@ -1621,14 +1641,26 @@ async function bootAuth() {
   renderAuthState();
   if (!supabaseClient) return;
 
+  async function hydrateAccountState() {
+    await refreshSavedPropertiesList();
+    var items = await listPropertiesForCurrentUser();
+
+    if (items.length) {
+      AUTH_STATE.currentSlug = items[0].slug;
+      await loadPropertyForCurrentUser(AUTH_STATE.currentSlug).catch(function(err){ console.error(err); });
+    } else {
+      await ensureCurrentPropertyExists();
+      await refreshSavedPropertiesList();
+    }
+  }
+
   var sessionResult = await supabaseClient.auth.getSession();
   AUTH_STATE.session = sessionResult.data.session;
   AUTH_STATE.user = sessionResult.data.session ? sessionResult.data.session.user : null;
   AUTH_STATE.currentSlug = slugifyProperty();
   renderAuthState();
   if (AUTH_STATE.user) {
-    await refreshSavedPropertiesList();
-    await loadPropertyForCurrentUser(AUTH_STATE.currentSlug).catch(function(){});
+    await hydrateAccountState();
   }
 
   supabaseClient.auth.onAuthStateChange(async function(_event, session) {
@@ -1637,8 +1669,7 @@ async function bootAuth() {
     AUTH_STATE.currentSlug = slugifyProperty();
     renderAuthState();
     if (AUTH_STATE.user) {
-      await refreshSavedPropertiesList();
-      await loadPropertyForCurrentUser(AUTH_STATE.currentSlug).catch(function(){});
+      await hydrateAccountState();
     } else {
       renderSavedProperties([]);
     }
