@@ -1255,34 +1255,49 @@ function build() {
 // ──────────────────────────────────────────────────────────
 function renderSummary(rows, totalRev, v) {
   if (!rows.length) { document.getElementById('summary').innerHTML = ''; return; }
-  var avg  = rows.reduce(function(s,r){return s+r.nightlyRate;},0) / rows.length;
-  var avgG = rows.reduce(function(s,r){return s+r.guestRate;},0)   / rows.length;
-  var maxR = rows.reduce(function(m,r){return Math.max(m,r.nightlyRate);}, 0);
-  var minR = rows.reduce(function(m,r){return Math.min(m,r.nightlyRate);}, Infinity);
 
-  var summaryYears = currentTab === 'all' ? YEARS : YEARS.filter(function(y) { return y.year === currentTab; });
+  var avg  = rows.reduce(function(s,r){ return s + r.nightlyRate; }, 0) / rows.length;
+  var avgG = rows.reduce(function(s,r){ return s + r.guestRate;   }, 0) / rows.length;
+  var maxR = rows.reduce(function(m,r){ return Math.max(m, r.nightlyRate); }, 0);
+  var minR = rows.reduce(function(m,r){ return Math.min(m, r.nightlyRate); }, Infinity);
+
+  var summaryYears = currentTab === 'all'
+    ? YEARS
+    : YEARS.filter(function(y) { return y.year === currentTab; });
+
   var infCards = summaryYears.map(function(y) {
     return '<div class="sc"><div class="sc-lbl">' + y.year + ' Inflation</div>'
-      + '<div class="sc-val">' + y.inflation + '%</div><div class="sc-sub">Banrep forecast</div></div>';
+      + '<div class="sc-val">' + y.inflation + '%</div>'
+      + '<div class="sc-sub">Banrep forecast</div></div>';
   }).join('');
 
   var wkLabel = YEARS.map(function(y) {
-    var n = rows.filter(function(r){return r.year===y.year;}).length;
+    var n = rows.filter(function(r){ return r.year === y.year; }).length;
     return n > 0 ? n + ' in ' + y.year : '';
-  }).filter(Boolean).join(' \u00b7 ');
+  }).filter(Boolean).join(' · ');
 
   var selectedYear = currentTab === 'all' ? YEARS[0].year : currentTab;
   var sv = getYearVals(selectedYear);
   var sy = getYearConfig(selectedYear) || {};
   var regularOcc = sy.occupancy && sy.occupancy.regular !== undefined ? sy.occupancy.regular : Math.round(OCC.regular * 100);
   var peakOcc = sy.occupancy && sy.occupancy.peak !== undefined ? sy.occupancy.peak : Math.round(OCC.peak * 100);
+
   var annualOperatingExpenses = summaryYears.reduce(function(sum, y) {
     return sum + (getYearMonthlyOperatingExpenses(y.year) * 12);
   }, 0);
+
   var annualOtherIncome = summaryYears.reduce(function(sum, y) {
     return sum + (getYearMonthlyOtherIncome(y.year) * 12);
   }, 0);
+
   var netIncome = totalRev + annualOtherIncome - annualOperatingExpenses;
+
+  var avgFx = rows.reduce(function(sum, r) {
+    return sum + (r.fx || sv.fx || v.fx);
+  }, 0) / rows.length;
+
+  var compAvgUsd = getCompAvg();
+  var compAvgCop = compAvgUsd * avgFx;
 
   var viewingLabel = currentTab === 'all' ? 'All Years' : String(currentTab);
   var viewingSub = currentTab === 'all'
@@ -1291,22 +1306,22 @@ function renderSummary(rows, totalRev, v) {
 
   document.getElementById('summary').innerHTML = ''
     + '<div class="sc"><div class="sc-lbl">Viewing</div><div class="sc-val">' + viewingLabel + '</div><div class="sc-sub">' + viewingSub + '</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Base Rate</div><div class="sc-val">' + fc(sv.baseRate) + '</div><div class="sc-sub">COP &middot; ' + fu(sv.baseRate/sv.fx) + ' USD</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Avg Your Rate</div><div class="sc-val">' + fc(avg) + '</div><div class="sc-sub">COP &middot; ' + fu(avg/sv.fx) + ' USD</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Avg Guest Rate</div><div class="sc-val">' + fc(avgG) + '</div><div class="sc-sub">COP &middot; ' + fu(avgG/sv.fx) + ' USD</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Peak (NYE)</div><div class="sc-val">' + fc(maxR) + '</div><div class="sc-sub">COP &middot; ' + fu(maxR/sv.fx) + ' USD</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Floor Rate</div><div class="sc-val">' + fc(minR) + '</div><div class="sc-sub">COP &middot; ' + fu(minR/sv.fx) + ' USD</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Comp Avg</div><div class="sc-val">$' + getCompAvg().toFixed(0) + '</div><div class="sc-sub">USD &middot; ' + COMPS.filter(function(c){return c.rate_usd;}).length + ' Morros KAI comps</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Base Rate</div><div class="sc-val">' + fc(sv.baseRate) + '</div><div class="sc-sub">COP · ' + fu(sv.baseRate / sv.fx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Avg Your Rate</div><div class="sc-val">' + fc(avg) + '</div><div class="sc-sub">COP · ' + fu(avg / avgFx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Avg Guest Rate</div><div class="sc-val">' + fc(avgG) + '</div><div class="sc-sub">COP · ' + fu(avgG / avgFx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Peak (NYE)</div><div class="sc-val">' + fc(maxR) + '</div><div class="sc-sub">COP · ' + fu(maxR / avgFx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Floor Rate</div><div class="sc-val">' + fc(minR) + '</div><div class="sc-sub">COP · ' + fu(minR / avgFx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Comp Avg</div><div class="sc-val">' + fc(compAvgCop) + '</div><div class="sc-sub">COP · ' + fu(compAvgUsd) + ' USD</div></div>'
     + '<div class="sc"><div class="sc-lbl">Flat Discount</div><div class="sc-val">' + sv.discount + '%</div><div class="sc-sub">Selected year</div></div>'
     + '<div class="sc"><div class="sc-lbl">Airbnb Fee</div><div class="sc-val">' + sv.airbnbFee + '%</div><div class="sc-sub">Guest add-on</div></div>'
     + '<div class="sc"><div class="sc-lbl">Regular Occ.</div><div class="sc-val">' + regularOcc + '%</div><div class="sc-sub">' + selectedYear + ' default</div></div>'
     + '<div class="sc"><div class="sc-lbl">Peak Occ.</div><div class="sc-val">' + peakOcc + '%</div><div class="sc-sub">' + selectedYear + ' default</div></div>'
     + infCards
     + '<div class="sc"><div class="sc-lbl">Weeks Shown</div><div class="sc-val">' + rows.length + '</div><div class="sc-sub">' + wkLabel + '</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Est. Revenue</div><div class="sc-val" style="font-size:15px">' + fc(totalRev) + '</div><div class="sc-sub">COP your share</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Annual Operating Expenses</div><div class="sc-val" style="font-size:15px">' + fc(annualOperatingExpenses) + '</div><div class="sc-sub">COP · ' + summaryYears.length + ' year' + (summaryYears.length > 1 ? 's' : '') + '</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Annual Other Income</div><div class="sc-val" style="font-size:15px">' + fc(annualOtherIncome) + '</div><div class="sc-sub">COP · recurring monthly</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Net Income</div><div class="sc-val" style="font-size:15px">' + fc(netIncome) + '</div><div class="sc-sub">COP · revenue + other income − operating expenses</div></div>';
+    + '<div class="sc"><div class="sc-lbl">Est. Revenue</div><div class="sc-val" style="font-size:15px">' + fc(totalRev) + '</div><div class="sc-sub">COP · ' + fu(totalRev / avgFx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Annual Operating Expenses</div><div class="sc-val" style="font-size:15px">' + fc(annualOperatingExpenses) + '</div><div class="sc-sub">COP · ' + fu(annualOperatingExpenses / avgFx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Annual Other Income</div><div class="sc-val" style="font-size:15px">' + fc(annualOtherIncome) + '</div><div class="sc-sub">COP · ' + fu(annualOtherIncome / avgFx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Net Income</div><div class="sc-val" style="font-size:15px">' + fc(netIncome) + '</div><div class="sc-sub">COP · ' + fu(netIncome / avgFx) + ' USD</div></div>';
 }
 
 // ──────────────────────────────────────────────────────────
