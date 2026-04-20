@@ -829,7 +829,8 @@ function renderPeaksPanel() {
     + '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">Other Income / Month (COP)</div>'
     + '<input type="number" value="' + getYearMonthlyOtherIncome(yr) + '" min="0" step="100000" '
     + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
-    + 'onchange="setYearMonthlyValue(' + yr + ',\'monthlyOtherIncome\', parseFloat(this.value)||1000000, 1000000)"></div>';
+    + 'onchange="setYearMonthlyValue(' + yr + ',\'monthlyOtherIncome\', parseFloat(this.value)||1000000, 1000000)"></div>'
+    + '</div>';
 
   // Per-year overrides row
   html += ''
@@ -849,7 +850,7 @@ function renderPeaksPanel() {
   if (YEARS.length > 1) {
     html_btn += '<button class="btn-del" onclick="removeYear(' + yr + ')">Remove ' + yr + '</button>';
   }
-  html += html_btn;
+  html += '<div style="margin:2px 0 10px;display:flex;justify-content:flex-end;">' + html_btn + '</div>';
 
   html += '<div class="col-hdrs">'
     + '<span class="col-hdr">Start</span><span class="col-hdr">End</span>'
