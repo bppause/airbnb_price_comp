@@ -320,7 +320,7 @@ var COMPS = [
 ];
 
 // Occupancy targets by season type
-var OCC       = { nye:0.90, peak:0.78, regular:0.55, low:0.42 };
+var OCC       = { nye:0.90, peak:0.80, regular:0.60, low:0.42 };
 // Comp rate multipliers by season type (relative to regular avg)
 var COMP_MULT = { nye:3.0,  peak:1.30, regular:1.0,  low:0.88 };
 
@@ -396,11 +396,21 @@ function getYearConfig(year) {
   return yc || null;
 }
 
-function getYearOccupancy(year, type) {
+function numOr(val, fallback) {
+  var n = parseFloat(val);
+  return isNaN(n) ? fallback : n;
+}
+
+function getYearOccupancyPct(year, type) {
   var yc = getYearConfig(year);
   var occ = yc && yc.occupancy ? yc.occupancy : {};
-  if (type === 'peak') return occ.peak !== undefined ? occ.peak / 100 : OCC.peak;
-  if (type === 'regular') return occ.regular !== undefined ? occ.regular / 100 : OCC.regular;
+  if (type === 'peak') return numOr(occ.peak, OCC.peak * 100);
+  if (type === 'regular') return numOr(occ.regular, OCC.regular * 100);
+  return numOr(OCC[type] !== undefined ? OCC[type] * 100 : OCC.regular * 100, OCC.regular * 100);
+}
+
+function getYearOccupancy(year, type) {
+  if (type === 'peak' || type === 'regular') return getYearOccupancyPct(year, type) / 100;
   return OCC[type] !== undefined ? OCC[type] : OCC.regular;
 }
 
@@ -416,12 +426,12 @@ function setYearOccupancy(yr, field, val) {
 
 function getYearMonthlyOperatingExpenses(year) {
   var yc = getYearConfig(year);
-  return yc && yc.monthlyOperatingExpenses !== undefined ? yc.monthlyOperatingExpenses : 9800000;
+  return yc ? numOr(yc.monthlyOperatingExpenses, 9800000) : 9800000;
 }
 
 function getYearMonthlyOtherIncome(year) {
   var yc = getYearConfig(year);
-  return yc && yc.monthlyOtherIncome !== undefined ? yc.monthlyOtherIncome : 1000000;
+  return yc ? numOr(yc.monthlyOtherIncome, 1000000) : 1000000;
 }
 
 function setYearMonthlyValue(yr, field, val, dflt) {
@@ -1286,9 +1296,8 @@ function renderSummary(rows, totalRev, v) {
 
   var selectedYear = currentTab === 'all' ? YEARS[0].year : currentTab;
   var sv = getYearVals(selectedYear);
-  var sy = getYearConfig(selectedYear) || {};
-  var regularOcc = sy.occupancy && sy.occupancy.regular !== undefined ? sy.occupancy.regular : Math.round(OCC.regular * 100);
-  var peakOcc = sy.occupancy && sy.occupancy.peak !== undefined ? sy.occupancy.peak : Math.round(OCC.peak * 100);
+  var regularOcc = getYearOccupancyPct(selectedYear, 'regular');
+  var peakOcc = getYearOccupancyPct(selectedYear, 'peak');
 
   var annualOperatingExpenses = summaryYears.reduce(function(sum, y) {
     return sum + (getYearMonthlyOperatingExpenses(y.year) * 12);
