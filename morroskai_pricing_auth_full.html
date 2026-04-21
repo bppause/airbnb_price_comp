@@ -279,7 +279,7 @@ var YEARS = [
     lowMonths: [4,7,8,9],  // 0-indexed: May=4, Aug=7, Sep=8, Oct=9
     // Per-year overrides (null = inherit from global CFG)
     overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
-    occupancy: { regular:55, peak:78 },
+    occupancy: { regular:60, peak:80 },
     monthlyOperatingExpenses: 9800000,
     monthlyOtherIncome: 1000000,
     peaks: [
@@ -296,7 +296,7 @@ var YEARS = [
     inflation: 3.7,        // Banrep forecast — declining toward 3% target
     lowMonths: [4,7,8,9],
     overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
-    occupancy: { regular:55, peak:78 },
+    occupancy: { regular:60, peak:80 },
     monthlyOperatingExpenses: 9800000,
     monthlyOtherIncome: 1000000,
     peaks: [
@@ -408,7 +408,7 @@ function setYearOccupancy(yr, field, val) {
   for (var i = 0; i < YEARS.length; i++) {
     if (YEARS[i].year === yr) {
       if (!YEARS[i].occupancy) YEARS[i].occupancy = {};
-      YEARS[i].occupancy[field] = isNaN(val) ? (field === 'peak' ? 78 : 55) : val;
+      YEARS[i].occupancy[field] = isNaN(val) ? (field === 'peak' ? 80 : 60) : val;
       break;
     }
   }
@@ -830,6 +830,14 @@ function renderPeaksPanel() {
     + '<input type="number" value="' + getYearMonthlyOtherIncome(yr) + '" min="0" step="100000" '
     + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
     + 'onchange="setYearMonthlyValue(' + yr + ',\'monthlyOtherIncome\', parseFloat(this.value)||1000000, 1000000)"></div>'
+    + '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">Regular Season Occupancy (%)</div>'
+    + '<input type="number" value="' + ((yc.occupancy && yc.occupancy.regular !== undefined) ? yc.occupancy.regular : 60) + '" min="0" max="100" step="1" '
+    + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
+    + 'onchange="setYearOccupancy(' + yr + ',\'regular\', parseFloat(this.value));build();"></div>'
+    + '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">Peak Season Occupancy (%)</div>'
+    + '<input type="number" value="' + ((yc.occupancy && yc.occupancy.peak !== undefined) ? yc.occupancy.peak : 80) + '" min="0" max="100" step="1" '
+    + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
+    + 'onchange="setYearOccupancy(' + yr + ',\'peak\', parseFloat(this.value));build();"></div>'
     + '</div>';
 
   // Per-year overrides row
@@ -970,7 +978,7 @@ function addYear() {
     return { start: bumpYear(p.start), end: bumpYear(p.end), markup: p.markup, label: p.label };
   });
   var newInf = Math.max(3.0, parseFloat((last.inflation - 0.5).toFixed(1)));
-  YEARS.push({ year: ny, inflation: newInf, lowMonths: [4,7,8,9], occupancy: { regular: (last.occupancy && last.occupancy.regular !== undefined ? last.occupancy.regular : 55), peak: (last.occupancy && last.occupancy.peak !== undefined ? last.occupancy.peak : 78) }, monthlyOperatingExpenses: (last.monthlyOperatingExpenses !== undefined ? last.monthlyOperatingExpenses : 9800000), monthlyOtherIncome: (last.monthlyOtherIncome !== undefined ? last.monthlyOtherIncome : 1000000), peaks: newPeaks });
+  YEARS.push({ year: ny, inflation: newInf, lowMonths: [4,7,8,9], occupancy: { regular: (last.occupancy && last.occupancy.regular !== undefined ? last.occupancy.regular : 60), peak: (last.occupancy && last.occupancy.peak !== undefined ? last.occupancy.peak : 80) }, monthlyOperatingExpenses: (last.monthlyOperatingExpenses !== undefined ? last.monthlyOperatingExpenses : 9800000), monthlyOtherIncome: (last.monthlyOtherIncome !== undefined ? last.monthlyOtherIncome : 1000000), peaks: newPeaks });
   activePeakYear = ny;
   renderTabs();
   renderPeaksPanel();
