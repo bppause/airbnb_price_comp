@@ -108,11 +108,17 @@ tr.mo-hdr td{background:var(--surface) !important;font-family:'Playfair Display'
 .comp-edit-row{display:grid;grid-template-columns:1fr 140px 70px 60px auto;gap:6px;align-items:center;margin-bottom:5px;}
 .comp-edit-row input{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;}
 .comp-edit-row input:focus{border-color:var(--gold);}
+
+.chart-panel{padding:0 20px 20px;max-width:1400px;margin:0 auto;}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px;}
+.chart-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:8px;}
+.chart-wrap{height:260px;}
 </style>
 
 <script src="/app-config.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 console.log("CONFIG:", window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
@@ -211,6 +217,7 @@ console.log("CONFIG:", window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 <!-- SUMMARY -->
 <div class="summary" id="summary"></div>
+<div class="chart-panel"><div class="chart-card"><div class="chart-title">Revenue & Net Income Trend</div><div class="chart-wrap"><canvas id="financialChart"></canvas></div></div></div>
 
 <!-- LEGEND -->
 <div class="leg">
@@ -280,7 +287,7 @@ var YEARS = [
     // Per-year overrides (null = inherit from global CFG)
     overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
     occupancy: { regular:60, peak:80 },
-    monthlyOperatingExpenses: 9800000,
+    monthlyOperatingExpensesOverride: null,
     monthlyOtherIncome: 1000000,
     peaks: [
       { start:'2026-04-01', end:'2026-04-05',  markup:30,  label:'Easter' },
@@ -297,7 +304,7 @@ var YEARS = [
     lowMonths: [4,7,8,9],
     overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null },
     occupancy: { regular:60, peak:80 },
-    monthlyOperatingExpenses: 9800000,
+    monthlyOperatingExpensesOverride: null,
     monthlyOtherIncome: 1000000,
     peaks: [
       { start:'2027-01-03', end:'2027-01-20',  markup:100, label:'January High Demand' },
@@ -378,11 +385,10 @@ function getCompSearchLocation() {
 // Merge global CFG + UI inputs + per-year overrides for a specific year
 function getYearVals(year) {
   var g = getVals(); // global UI values
-  var yc = null;
-  for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === year) { yc = YEARS[i]; break; } }
+  var yc = getYearConfig(year);
   var ov = (yc && yc.overrides) ? yc.overrides : {};
   return {
-    baseRate:  ov.baseRate  !== null && ov.baseRate  !== undefined ? ov.baseRate  : g.baseRate,
+    baseRate:  getYearBaseRate(year),
     fx:        ov.fx        !== null && ov.fx        !== undefined ? ov.fx        : g.fx,
     cohost:    ov.cohost    !== null && ov.cohost    !== undefined ? ov.cohost/100 : g.cohost,
     discount:  ov.discount  !== null && ov.discount  !== undefined ? ov.discount  : g.discount,
@@ -424,11 +430,6 @@ function setYearOccupancy(yr, field, val) {
   }
 }
 
-function getYearMonthlyOperatingExpenses(year) {
-  var yc = getYearConfig(year);
-  return yc ? numOr(yc.monthlyOperatingExpenses, 9800000) : 9800000;
-}
-
 function getYearMonthlyOtherIncome(year) {
   var yc = getYearConfig(year);
   return yc ? numOr(yc.monthlyOtherIncome, 1000000) : 1000000;
@@ -437,11 +438,95 @@ function getYearMonthlyOtherIncome(year) {
 function setYearMonthlyValue(yr, field, val, dflt) {
   for (var i = 0; i < YEARS.length; i++) {
     if (YEARS[i].year === yr) {
-      YEARS[i][field] = isNaN(val) ? dflt : val;
+      if (field === 'monthlyOperatingExpenses' || field === 'monthlyOperatingExpensesOverride') {
+        YEARS[i].monthlyOperatingExpensesOverride = isNaN(val) ? null : val;
+      } else {
+        YEARS[i][field] = isNaN(val) ? dflt : val;
+      }
       break;
     }
   }
   build();
+}
+
+function getYearIndex(year) {
+  for (var i = 0; i < YEARS.length; i++) {
+    if (YEARS[i].year === year) return i;
+  }
+  return -1;
+}
+
+function getYearInflationFactor(year) {
+  var yc = getYearConfig(year);
+  return 1 + (numOr(yc && yc.inflation, 0) / 100);
+}
+
+function normalizeYearModel() {
+  for (var i = 0; i < YEARS.length; i++) {
+    var y = YEARS[i];
+    if (!y.overrides) y.overrides = {};
+    if (y.overrides.baseRate === undefined) y.overrides.baseRate = null;
+    if (!y.occupancy) y.occupancy = {};
+    if (y.occupancy.regular === undefined) y.occupancy.regular = 60;
+    if (y.occupancy.peak === undefined) y.occupancy.peak = 80;
+    if (y.monthlyOtherIncome === undefined) y.monthlyOtherIncome = 1000000;
+    // Migration from older builds: old monthlyOperatingExpenses was a hard value.
+    // Treat non-default old values as manual overrides; default 9,800,000 becomes auto-derived.
+    if (y.monthlyOperatingExpensesOverride === undefined) {
+      if (y.monthlyOperatingExpenses !== undefined && Number(y.monthlyOperatingExpenses) !== 9800000) {
+        y.monthlyOperatingExpensesOverride = Number(y.monthlyOperatingExpenses);
+      } else {
+        y.monthlyOperatingExpensesOverride = null;
+      }
+    }
+    delete y.monthlyOperatingExpenses;
+  }
+}
+
+function getYearBaseRate(year) {
+  var idx = getYearIndex(year);
+  if (idx < 0) return getVals().baseRate || CFG.baseRate;
+  var y = YEARS[idx];
+  var ov = y.overrides || {};
+  if (ov.baseRate !== null && ov.baseRate !== undefined && !isNaN(parseFloat(ov.baseRate))) {
+    return parseFloat(ov.baseRate);
+  }
+  if (idx === 0) return getVals().baseRate || CFG.baseRate;
+  var prevYear = YEARS[idx - 1].year;
+  return Math.round(getYearBaseRate(prevYear) * getYearInflationFactor(year));
+}
+
+function getYearMonthlyOperatingExpenses(year) {
+  var idx = getYearIndex(year);
+  if (idx < 0) return 9800000;
+  var y = YEARS[idx];
+  if (y.monthlyOperatingExpensesOverride !== null && y.monthlyOperatingExpensesOverride !== undefined && !isNaN(parseFloat(y.monthlyOperatingExpensesOverride))) {
+    return parseFloat(y.monthlyOperatingExpensesOverride);
+  }
+  if (idx === 0) return 9800000;
+  var prevYear = YEARS[idx - 1].year;
+  return Math.round(getYearMonthlyOperatingExpenses(prevYear) * getYearInflationFactor(year));
+}
+
+function isYearBaseRateOverridden(year) {
+  var y = getYearConfig(year);
+  return !!(y && y.overrides && y.overrides.baseRate !== null && y.overrides.baseRate !== undefined);
+}
+
+function isYearOperatingExpensesOverridden(year) {
+  var y = getYearConfig(year);
+  return !!(y && y.monthlyOperatingExpensesOverride !== null && y.monthlyOperatingExpensesOverride !== undefined);
+}
+
+function getRecommendedBaseRate(year) {
+  var yv = getYearVals(year);
+  var compCOP = getCompAvg() * yv.fx;
+  if (!compCOP) return null;
+  var occ = getYearOccupancy(year, 'regular');
+  var adj = 1;
+  if (occ < 0.60) adj = 0.90;
+  else if (occ > 0.75) adj = 1.10;
+  return Math.round(compCOP * adj);
 }
 
 function getCompAvg() {
@@ -453,13 +538,9 @@ function getCompAvg() {
 // INFLATION  — weekly compound, cascades across years
 // ──────────────────────────────────────────────────────────
 function infFactor(year, wi) {
-  var yi = -1;
-  for (var i = 0; i < YEARS.length; i++) { if (YEARS[i].year === year) { yi = i; break; } }
-  if (yi < 0) return 1;
-  var base = 1;
-  for (var j = 0; j < yi; j++) base *= (1 + YEARS[j].inflation / 100);
-  var wm = Math.pow(1 + YEARS[yi].inflation / 100, 1/52);
-  return base * Math.pow(wm, wi);
+  // Inflation is applied once per year through getYearBaseRate() and getYearMonthlyOperatingExpenses().
+  // Do not spread inflation weekly/monthly inside the same year.
+  return 1;
 }
 
 // ──────────────────────────────────────────────────────────
@@ -809,7 +890,7 @@ function renderPeaksPanel() {
   function ovVal(field) { return ov[field] !== null && ov[field] !== undefined ? ov[field] : ''; }
   function ovPlaceholder(field) {
     var g = getVals();
-    if (field === 'baseRate') return 'Global: ' + g.baseRate;
+    if (field === 'baseRate') return 'Auto: ' + fc(getYearBaseRate(yr));
     if (field === 'fx')       return 'Global: ' + g.fx;
     if (field === 'cohost')   return 'Global: ' + Math.round(g.cohost*100) + '%';
     if (field === 'discount') return 'Global: ' + g.discount + '%';
@@ -823,7 +904,7 @@ function renderPeaksPanel() {
     + 'style="width:75px;background:var(--surface);border:1px solid var(--border);border-radius:4px;'
     + 'font-family:JetBrains Mono,monospace;font-size:12px;padding:5px 8px;outline:none;color:var(--ink);" '
     + 'onchange="setPeakYearInflation(' + yr + ', parseFloat(this.value)||0)">'
-    + '<span style="font-size:9px;color:var(--ink3)">Banrep forecast — weekly compound</span>'
+    + '<span style="font-size:9px;color:var(--ink3)">Year-over-year factor for auto base rate and auto expenses</span>'
     + '<button class="btn-sm" style="margin-left:auto" onclick="addPeak()">+ Add Period</button>';
 
   // Per-year finance row
@@ -831,11 +912,12 @@ function renderPeaksPanel() {
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px;'
     + 'background:rgba(42,102,64,.04);border:1px solid rgba(42,102,64,.15);border-radius:6px;padding:10px 12px;">'
     + '<div style="grid-column:1/-1;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--green2);margin-bottom:4px">'
-    + yr + ' Monthly Operations & Income</div>'
+    + yr + ' Monthly Operations & Income <span style="font-weight:400;color:var(--ink3)">— operating expenses auto-inflate from prior year unless overridden</span></div>'
     + '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">Operating Expenses / Month (COP)</div>'
     + '<input type="number" value="' + getYearMonthlyOperatingExpenses(yr) + '" min="0" step="100000" '
     + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
-    + 'onchange="setYearMonthlyValue(' + yr + ',\'monthlyOperatingExpenses\', parseFloat(this.value)||9800000, 9800000)"></div>'
+    + 'onchange="setYearMonthlyValue(' + yr + ',\'monthlyOperatingExpensesOverride\', parseFloat(this.value)||9800000, 9800000)">'
+    + '<div style="font-size:9px;color:' + (isYearOperatingExpensesOverridden(yr) ? 'var(--gold)' : 'var(--ink3)') + ';margin-top:2px">' + (isYearOperatingExpensesOverridden(yr) ? 'Manual override' : 'Auto from prior year + inflation') + '</div></div>'
     + '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:2px">Other Income / Month (COP)</div>'
     + '<input type="number" value="' + getYearMonthlyOtherIncome(yr) + '" min="0" step="100000" '
     + 'style="background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;padding:5px 8px;outline:none;width:100%;color:var(--ink);" '
@@ -988,7 +1070,7 @@ function addYear() {
     return { start: bumpYear(p.start), end: bumpYear(p.end), markup: p.markup, label: p.label };
   });
   var newInf = Math.max(3.0, parseFloat((last.inflation - 0.5).toFixed(1)));
-  YEARS.push({ year: ny, inflation: newInf, lowMonths: [4,7,8,9], occupancy: { regular: (last.occupancy && last.occupancy.regular !== undefined ? last.occupancy.regular : 60), peak: (last.occupancy && last.occupancy.peak !== undefined ? last.occupancy.peak : 80) }, monthlyOperatingExpenses: (last.monthlyOperatingExpenses !== undefined ? last.monthlyOperatingExpenses : 9800000), monthlyOtherIncome: (last.monthlyOtherIncome !== undefined ? last.monthlyOtherIncome : 1000000), peaks: newPeaks });
+  YEARS.push({ year: ny, inflation: newInf, lowMonths: [4,7,8,9], overrides: { baseRate:null, fx:null, cohost:null, discount:null, airbnbFee:null }, occupancy: { regular: (last.occupancy && last.occupancy.regular !== undefined ? last.occupancy.regular : 60), peak: (last.occupancy && last.occupancy.peak !== undefined ? last.occupancy.peak : 80) }, monthlyOperatingExpensesOverride: null, monthlyOtherIncome: (last.monthlyOtherIncome !== undefined ? last.monthlyOtherIncome : 1000000), peaks: newPeaks });
   activePeakYear = ny;
   renderTabs();
   renderPeaksPanel();
@@ -1323,7 +1405,8 @@ function renderSummary(rows, totalRev, v) {
 
   document.getElementById('summary').innerHTML = ''
     + '<div class="sc"><div class="sc-lbl">Viewing</div><div class="sc-val">' + viewingLabel + '</div><div class="sc-sub">' + viewingSub + '</div></div>'
-    + '<div class="sc"><div class="sc-lbl">Base Rate</div><div class="sc-val">' + fc(sv.baseRate) + '</div><div class="sc-sub">COP · ' + fu(sv.baseRate / sv.fx) + ' USD</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Base Rate</div><div class="sc-val">' + fc(sv.baseRate) + '</div><div class="sc-sub">COP · ' + fu(sv.baseRate / sv.fx) + ' USD · ' + (isYearBaseRateOverridden(selectedYear) ? 'Manual override' : 'Auto inflation') + '</div></div>'
+    + '<div class="sc"><div class="sc-lbl">Recommended Rate</div><div class="sc-val">' + fc(getRecommendedBaseRate(selectedYear) || sv.baseRate) + '</div><div class="sc-sub">COP · ' + fu((getRecommendedBaseRate(selectedYear) || sv.baseRate) / sv.fx) + ' USD · comp-based</div></div>'
     + '<div class="sc"><div class="sc-lbl">Avg Your Rate</div><div class="sc-val">' + fc(avg) + '</div><div class="sc-sub">COP · ' + fu(avg / avgFx) + ' USD</div></div>'
     + '<div class="sc"><div class="sc-lbl">Avg Guest Rate</div><div class="sc-val">' + fc(avgG) + '</div><div class="sc-sub">COP · ' + fu(avgG / avgFx) + ' USD</div></div>'
     + '<div class="sc"><div class="sc-lbl">Peak (NYE)</div><div class="sc-val">' + fc(maxR) + '</div><div class="sc-sub">COP · ' + fu(maxR / avgFx) + ' USD</div></div>'
@@ -1339,6 +1422,42 @@ function renderSummary(rows, totalRev, v) {
     + '<div class="sc"><div class="sc-lbl">Annual Operating Expenses</div><div class="sc-val" style="font-size:15px">' + fc(annualOperatingExpenses) + '</div><div class="sc-sub">COP · ' + fu(annualOperatingExpenses / avgFx) + ' USD</div></div>'
     + '<div class="sc"><div class="sc-lbl">Annual Other Income</div><div class="sc-val" style="font-size:15px">' + fc(annualOtherIncome) + '</div><div class="sc-sub">COP · ' + fu(annualOtherIncome / avgFx) + ' USD</div></div>'
     + '<div class="sc"><div class="sc-lbl">Net Income</div><div class="sc-val" style="font-size:15px">' + fc(netIncome) + '</div><div class="sc-sub">COP · ' + fu(netIncome / avgFx) + ' USD</div></div>';
+  renderFinancialChart(rows);
+
+}
+
+
+function renderFinancialChart(rows) {
+  var canvas = document.getElementById('financialChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  var years = (currentTab === 'all') ? YEARS : YEARS.filter(function(y){ return y.year === currentTab; });
+  var labels = years.map(function(y){ return String(y.year); });
+  var revenue = years.map(function(y){
+    return rows.filter(function(r){ return r.year === y.year; }).reduce(function(sum, r){ return sum + r.yourCOP; }, 0);
+  });
+  var net = years.map(function(y, idx){
+    var rev = revenue[idx] || 0;
+    var annualOp = getYearMonthlyOperatingExpenses(y.year) * 12;
+    var annualOther = getYearMonthlyOtherIncome(y.year) * 12;
+    return rev + annualOther - annualOp;
+  });
+  if (window.financialChartInstance) window.financialChartInstance.destroy();
+  window.financialChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Estimated Revenue (COP)', data: revenue, tension: 0.25 },
+        { label: 'Net Income (COP)', data: net, tension: 0.25 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { ticks: { callback: function(value){ return new Intl.NumberFormat('es-CO', { notation:'compact' }).format(value); } } } }
+    }
+  });
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1434,7 +1553,7 @@ function renderTable(rows, v) {
     + 'border-radius:6px;padding:10px 14px;font-size:10px;color:var(--ink2);line-height:1.8;">'
     + '<strong style="color:var(--blue)">Comp Rate:</strong> Market avg $' + getCompAvg().toFixed(0)
     + ' USD from ' + COMPS.length + ' ' + (PROPERTY.building || 'property') + ' ' + (PROPERTY.bedrooms||2) + 'BR/' + (PROPERTY.bathrooms||2) + 'BA comps. '
-    + 'Peak/NYE/Low apply same multipliers as your property. Inflation compounded weekly. '
+    + 'Peak/NYE/Low apply same multipliers as your property. Inflation is applied once per year to auto-derived base rate and operating expenses. '
     + '<strong>vs Comps</strong>: green = below market (room to raise), red = above (5&#9733; rating justifies premium). '
     + '<br><strong>Sources:</strong> ' + links + '</div>';
 
@@ -1456,6 +1575,7 @@ var sbEl = document.getElementById('c-same-building');
 if (sbEl) sbEl.checked = COMP_FLAGS.sameBuilding;
 
 // Render all panels in correct dependency order
+normalizeYearModel();
 updateInfDisplay();    // inflation display string
 renderPropertyPanel(); // property profile fields + amenity chips
 updateTopHeader();    // dynamic header from property profile
@@ -1515,7 +1635,7 @@ function applyAppSettings(payload) {
   try {
     if (payload.CFG) CFG = payload.CFG;
     if (payload.PROPERTY) PROPERTY = payload.PROPERTY;
-    if (Array.isArray(payload.YEARS)) YEARS = payload.YEARS;
+    if (Array.isArray(payload.YEARS)) { YEARS = payload.YEARS; normalizeYearModel(); }
     if (Array.isArray(payload.COMPS)) COMPS = payload.COMPS;
     YEARS.forEach(function(y) {
       if (y.monthlyOperatingExpenses === undefined) y.monthlyOperatingExpenses = 9800000;

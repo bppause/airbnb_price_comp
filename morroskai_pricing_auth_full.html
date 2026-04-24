@@ -975,9 +975,22 @@ function renderPeaksPanel() {
 
 function setPeakYearInflation(yr, val) {
   for (var i = 0; i < YEARS.length; i++) {
-    if (YEARS[i].year === yr) { YEARS[i].inflation = val; break; }
+    if (YEARS[i].year === yr) {
+      YEARS[i].inflation = val;
+
+      // When inflation changes, recalculate that year's default base rate and
+      // monthly operating expenses from the prior year. This intentionally
+      // clears manual overrides for these two inflation-derived fields so the
+      // new inflation rate is applied immediately. Users can type a new manual
+      // value afterward if they want to override the recalculated default.
+      if (!YEARS[i].overrides) YEARS[i].overrides = {};
+      YEARS[i].overrides.baseRate = null;
+      YEARS[i].monthlyOperatingExpensesOverride = null;
+      break;
+    }
   }
   updateInfDisplay();
+  renderPeaksPanel();
   build();
 }
 
