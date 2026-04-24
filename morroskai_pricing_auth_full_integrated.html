@@ -1610,14 +1610,48 @@ function renderFinancialChart(rows) {
 
   var labels = MONTHS_SHORT.map(function(m){ return m + ' ' + chartYear; });
 
+  var breakEven = new Array(12).fill(0);
+  var monthlyPointColors = monthlyNet.map(function(v){ return v >= 0 ? '#2a6640' : '#c0392b'; });
+
   if (window.financialChartInstance) window.financialChartInstance.destroy();
   window.financialChartInstance = new Chart(canvas, {
     type: 'line',
     data: {
       labels: labels,
       datasets: [
-        { label: 'Monthly Net Income (COP)', data: monthlyNet, tension: 0.25 },
-        { label: 'Running Net Income (COP)', data: runningNet, tension: 0.25 }
+        {
+          label: 'Break-even (COP)',
+          data: breakEven,
+          borderDash: [6, 5],
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0,
+          borderColor: '#1c1710'
+        },
+        {
+          label: 'Monthly Net Income (COP)',
+          data: monthlyNet,
+          tension: 0.25,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointBackgroundColor: monthlyPointColors,
+          pointBorderColor: monthlyPointColors,
+          segment: {
+            borderColor: function(ctx) {
+              var y0 = ctx.p0.parsed.y;
+              var y1 = ctx.p1.parsed.y;
+              return (y0 >= 0 && y1 >= 0) ? '#2a6640' : '#c0392b';
+            }
+          }
+        },
+        {
+          label: 'Running Net Income (COP)',
+          data: runningNet,
+          tension: 0.25,
+          borderWidth: 2,
+          pointRadius: 3,
+          borderColor: '#1a4a7a'
+        }
       ]
     },
     options: {
@@ -1636,7 +1670,7 @@ function renderFinancialChart(rows) {
         },
         title: {
           display: true,
-          text: 'Monthly net income and running net income — ' + chartYear
+          text: 'Monthly net income, break-even, and running net income — ' + chartYear
         }
       },
       scales: {
