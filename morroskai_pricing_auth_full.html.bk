@@ -428,6 +428,7 @@ function setYearOccupancy(yr, field, val) {
       break;
     }
   }
+  recalculateAllViews();
 }
 
 function getYearMonthlyOtherIncome(year) {
@@ -446,7 +447,7 @@ function setYearMonthlyValue(yr, field, val, dflt) {
       break;
     }
   }
-  build();
+  recalculateAllViews({ renderPeaks: true });
 }
 
 function getYearIndex(year) {
@@ -868,6 +869,7 @@ function setYearOverride(yr, field, val) {
       break;
     }
   }
+  recalculateAllViews({ renderPeaks: field === 'baseRate' || field === 'fx' });
 }
 
 function renderPeaksPanel() {
@@ -989,9 +991,7 @@ function setPeakYearInflation(yr, val) {
       break;
     }
   }
-  updateInfDisplay();
-  renderPeaksPanel();
-  build();
+  recalculateAllViews({ renderPeaks: true });
 }
 
 // Auto-suggest label from date range
@@ -1042,6 +1042,7 @@ function setPeakField(yr, pi, field, val) {
       break;
     }
   }
+  recalculateAllViews();
 }
 
 function addPeak() {
@@ -1103,6 +1104,17 @@ function removeYear(yr) {
 }
 
 function updateInfDisplay() {}
+
+function recalculateAllViews(options) {
+  options = options || {};
+  if (AUTH_STATE && AUTH_STATE.isApplying) return;
+  updateInfDisplay();
+  if (options.renderPeaks) renderPeaksPanel();
+  renderTabs();
+  renderCompsPanel();
+  build(); // build() recalculates table, dashboard, and financial chart
+  scheduleAutoSave();
+}
 
 // ──────────────────────────────────────────────────────────
 // COMPS PANEL
@@ -1201,12 +1213,14 @@ function setCompField(i, field, val) {
     COMPS[i][field] = val;
     if (field === 'rate_usd' || field === 'url') COMPS[i].live = false; // reset live flag on manual edit
   }
+  recalculateAllViews();
 }
 
 function addComp() {
   COMPS.push({ name: '', url: '', rate_usd: null, rating: null, live: false });
   renderCompEditList(); // rebuild edit rows
   renderCompsPanel();   // rebuild display cards
+  recalculateAllViews();
 }
 
 function delComp(i) {
@@ -1214,7 +1228,7 @@ function delComp(i) {
   COMPS.splice(i, 1);
   renderCompEditList(); // rebuild edit rows
   renderCompsPanel();   // rebuild display cards
-  build();
+  recalculateAllViews();
 }
 
 function renderCompsPanel() {
@@ -1953,7 +1967,17 @@ async function bootAuth() {
   });
 
   document.addEventListener('input', function(){ scheduleAutoSave(); });
-  document.addEventListener('change', function(){ scheduleAutoSave(); });
+  document.addEventListener('change', function(event){
+    scheduleAutoSave();
+    var target = event.target;
+    if (!target) return;
+    // Any variable change should update table, dashboard, and chart immediately.
+    // Skip property selector because loading a property handles its own render path.
+    if (target.id === 'saved-property-select') return;
+    if (target.matches && target.matches('input, select, textarea')) {
+      window.setTimeout(function(){ recalculateAllViews(); }, 0);
+    }
+  });
 }
 </script>
 

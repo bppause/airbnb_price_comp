@@ -19,7 +19,18 @@ body{background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',monospac
 .topbar{background:var(--ink);color:#e8dfc8;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
 .topbar-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--gold3);}
 .topbar-meta{font-size:9px;letter-spacing:.08em;color:#9a8f7e;}
-.header{background:var(--card);border-bottom:2px solid var(--ink);padding:16px 20px;}
+.topbar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.topbar-version{font-size:10px;letter-spacing:.04em;color:#d9c680;font-family:'JetBrains Mono',monospace;opacity:.9;}
+.version-toggle{background:rgba(255,255,255,.06);border:1px solid rgba(240,204,96,.35);border-radius:4px;color:var(--gold3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 7px;cursor:pointer;}
+.version-panel{display:none;position:fixed;right:14px;top:52px;z-index:9999;background:var(--card);color:var(--ink);border:1px solid var(--border);border-top:3px solid var(--gold);box-shadow:0 12px 32px rgba(0,0,0,.18);border-radius:8px;width:min(420px,calc(100vw - 28px));padding:12px;}
+.version-panel.open{display:block;}
+.version-panel h3{font-family:'Playfair Display',serif;font-size:16px;margin:0 0 8px;color:var(--gold);}
+.version-grid{display:grid;grid-template-columns:120px 1fr;gap:6px 10px;font-size:10px;word-break:break-all;}
+.version-grid .k{color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;}
+.version-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.version-actions button{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--ink2);font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 8px;cursor:pointer;}
+.header{background:var(--card);border-bottom:2px solid var(--ink);padding:12px 20px;}
 .header-inner{max-width:1400px;margin:0 auto;}
 h1{font-family:'Playfair Display',serif;font-size:clamp(20px,3vw,30px);font-weight:900;color:var(--ink);margin-bottom:4px;}
 h1 em{color:var(--gold);font-style:normal;}
@@ -123,13 +134,119 @@ tr.mo-hdr td{background:var(--surface) !important;font-family:'Playfair Display'
 <script>
 console.log("CONFIG:", window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 </script>
+<script>
+(function normalizeAppConfig(){
+  window.APP_CONFIG = window.APP_CONFIG || {};
+  if (!window.APP_CONFIG.SUPABASE_URL && window.SUPABASE_URL) window.APP_CONFIG.SUPABASE_URL = window.SUPABASE_URL;
+  if (!window.APP_CONFIG.SUPABASE_ANON_KEY && window.SUPABASE_ANON_KEY) window.APP_CONFIG.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+})();
+
+window.APP_BUILD = {
+  fallbackBuildTime: "2026-04-24T13:12:00-04:00",
+  fallbackVersion: "v2026.04.24-1312",
+  fallbackEnv: "production",
+  sourceFile: "morroskai_pricing_auth_full.html"
+};
+
+function getBuildConfig(){
+  var cfg = window.APP_CONFIG || {};
+  var buildTime = cfg.BUILD_TIME || cfg.BUILD_DATE || window.APP_BUILD.fallbackBuildTime;
+  var d = buildTime ? new Date(buildTime) : new Date();
+  if (isNaN(d.getTime())) d = new Date();
+  var pad = function(n){ return String(n).padStart(2, '0'); };
+  var version = cfg.APP_VERSION || cfg.VERSION || window.APP_BUILD.fallbackVersion || (
+    'v' + d.getFullYear() + '.' + pad(d.getMonth()+1) + '.' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes())
+  );
+  return {
+    buildTimeRaw: buildTime,
+    buildTimeLocal: d.toLocaleString(),
+    buildStamp: 'v' + d.getFullYear() + '.' + pad(d.getMonth()+1) + '.' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()),
+    version: version,
+    env: cfg.ENV || cfg.NODE_ENV || window.APP_BUILD.fallbackEnv || 'production',
+    commit: cfg.GIT_COMMIT || cfg.COMMIT_SHA || cfg.RENDER_GIT_COMMIT || 'not provided',
+    sourceFile: cfg.HTML_FILE || window.APP_BUILD.sourceFile,
+    url: window.location.href
+  };
+}
+
+function setBuildVersion(){
+  var b = getBuildConfig();
+  var shortCommit = b.commit && b.commit !== 'not provided' ? String(b.commit).slice(0,7) : 'no-hash';
+  var top = document.getElementById('app-version');
+  if (top) top.textContent = b.buildStamp + ' · ' + b.env + ' · ' + shortCommit;
+  var ids = {
+    'vc-build-time': b.buildTimeLocal,
+    'vc-version': b.version,
+    'vc-env': b.env,
+    'vc-commit': b.commit,
+    'vc-file': b.sourceFile,
+    'vc-url': b.url
+  };
+  Object.keys(ids).forEach(function(id){ var el = document.getElementById(id); if (el) el.textContent = ids[id]; });
+}
+
+function toggleVersionPanel(force){
+  var el = document.getElementById('version-panel');
+  if (!el) return;
+  if (force === false) el.classList.remove('open');
+  else if (force === true) el.classList.add('open');
+  else el.classList.toggle('open');
+  if (el.classList.contains('open')) setBuildVersion();
+}
+
+function copyVersionInfo(){
+  var b = getBuildConfig();
+  var text = [
+    'Build Time: ' + b.buildTimeLocal,
+    'Version: ' + b.version,
+    'Environment: ' + b.env,
+    'Git Commit: ' + b.commit,
+    'Source File: ' + b.sourceFile,
+    'URL: ' + b.url
+  ].join('\n');
+  if (navigator.clipboard) navigator.clipboard.writeText(text);
+  alert('Version info copied.');
+}
+
+function hardReloadApp(){
+  var url = new URL(window.location.href);
+  url.searchParams.set('v', Date.now());
+  window.location.href = url.toString();
+}
+
+document.addEventListener('DOMContentLoaded', setBuildVersion);
+</script>
 
 </head>
 <body>
 
 <div class="topbar">
-  <span class="topbar-title" id="topbar-title">Morros KAI 317</span>
-  <span class="topbar-meta" id="topbar-meta">Serena del Mar &nbsp;&middot;&nbsp; Cartagena &nbsp;&middot;&nbsp; Weekly Pricing Schedule</span>
+  <div class="topbar-left">
+    <span class="topbar-title" id="topbar-title">Morros KAI 317</span>
+    <span class="topbar-version" id="app-version">v-loading</span>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-meta" id="topbar-meta">Serena del Mar &nbsp;&middot;&nbsp; Cartagena &nbsp;&middot;&nbsp; Weekly Pricing Schedule</span>
+    <button type="button" class="version-toggle" onclick="toggleVersionPanel()">Version</button>
+  </div>
+</div>
+
+<div class="version-panel" id="version-panel">
+  <h3>Version Control</h3>
+  <div class="version-grid">
+    <div class="k">Build Time</div><div id="vc-build-time">—</div>
+    <div class="k">Version</div><div id="vc-version">—</div>
+    <div class="k">Environment</div><div id="vc-env">—</div>
+    <div class="k">Git Commit</div><div id="vc-commit">—</div>
+    <div class="k">Source File</div><div id="vc-file">morroskai_pricing_auth_full.html</div>
+    <div class="k">Current URL</div><div id="vc-url">—</div>
+  </div>
+  <div class="version-actions">
+    <button type="button" onclick="copyVersionInfo()">Copy Info</button>
+    <button type="button" onclick="location.reload()">Reload</button>
+    <button type="button" onclick="hardReloadApp()">Hard Reload</button>
+    <button type="button" onclick="toggleVersionPanel(false)">Close</button>
+  </div>
 </div>
 
 
@@ -157,15 +274,16 @@ console.log("CONFIG:", window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 <div class="header">
   <div class="header-inner">
     <h1>Weekly Airbnb Pricing <em>Schedule</em></h1>
-    <div class="header-sub">Base rate &middot; Per-year seasons &amp; inflation &middot; Flat discount &middot; Airbnb fee &middot; Live comp rates &middot; COP &amp; USD</div>
-    <div class="controls">
-      <div class="ctrl"><label>Base Rate (COP)</label><input type="number" id="c-base" value="400000" step="10000" min="100000"></div>
-      <div class="ctrl"><label>USD / COP Rate</label><input type="number" id="c-fx" value="3500" step="50" min="2000"></div>
-      <div class="ctrl"><label>Co-host Share (%)</label><input type="number" id="c-cohost" value="85" step="1" min="0" max="100"></div>
-      <div class="ctrl"><label>Flat Discount (%)</label><input type="number" id="c-disc" value="15" step="1" min="0" max="50"></div>
-      <div class="ctrl" style="min-width:240px"><label>Comp Search Location</label><input type="text" id="c-location" value="Playa Manzanillo, Cartagena, Colombia" placeholder="e.g. Playa Manzanillo, Cartagena, Colombia"></div>
-      <div class="ctrl"><label>Airbnb Fee (%)</label><input type="number" id="c-airbnb" value="20" step="1" min="0" max="25"></div>
-      <button class="btn" onclick="build()">&#8635;&nbsp; Recalculate Pricing</button>
+    <div class="header-sub">Per-year pricing, occupancy, operations, comps, COP &amp; USD dashboard, and autosave.</div>
+    <!-- Hidden global defaults retained for existing calculation functions.
+         User-facing controls now live in the per-year settings section and auto-recalculate on change. -->
+    <div id="hidden-global-controls" style="display:none;">
+      <input type="number" id="c-base" value="400000">
+      <input type="number" id="c-fx" value="3500">
+      <input type="number" id="c-cohost" value="85">
+      <input type="number" id="c-disc" value="15">
+      <input type="text" id="c-location" value="Playa Manzanillo, Cartagena, Colombia">
+      <input type="number" id="c-airbnb" value="20">
     </div>
   </div>
 </div>
