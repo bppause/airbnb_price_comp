@@ -1841,7 +1841,64 @@ function getCurrentPropertyName() {
   return [PROPERTY.building || 'Property', PROPERTY.unit || ''].join(' ').trim();
 }
 
+function syncDomToAppState() {
+  // Pull current form values into the in-memory model immediately before saving.
+  // This makes autosave reliable even when the user has typed into a field but
+  // the field's inline onchange handler has not fired yet.
+  function el(id) { return document.getElementById(id); }
+  function n(id, fallback) {
+    var node = el(id);
+    if (!node) return fallback;
+    var val = parseFloat(node.value);
+    return isNaN(val) ? fallback : val;
+  }
+  function t(id, fallback) {
+    var node = el(id);
+    return node ? node.value : fallback;
+  }
+
+  CFG.baseRate  = n('c-base', CFG.baseRate);
+  CFG.fx        = n('c-fx', CFG.fx);
+  CFG.cohost    = n('c-cohost', CFG.cohost);
+  CFG.discount  = n('c-disc', CFG.discount);
+  CFG.airbnbFee = n('c-airbnb', CFG.airbnbFee);
+
+  PROPERTY.building     = t('p-building', PROPERTY.building);
+  PROPERTY.unit         = t('p-unit', PROPERTY.unit);
+  PROPERTY.neighborhood = t('p-neighborhood', PROPERTY.neighborhood);
+  PROPERTY.city         = t('p-city', PROPERTY.city);
+  PROPERTY.country      = t('p-country', PROPERTY.country);
+  PROPERTY.bedrooms     = n('p-beds', PROPERTY.bedrooms);
+  PROPERTY.bathrooms    = n('p-baths', PROPERTY.bathrooms);
+  PROPERTY.maxGuests    = n('p-guests', PROPERTY.maxGuests);
+  PROPERTY.floorArea    = t('p-area', PROPERTY.floorArea || '');
+  PROPERTY.floor        = t('p-floor', PROPERTY.floor || '');
+  PROPERTY.rating       = n('p-rating', PROPERTY.rating);
+  PROPERTY.notes        = t('p-notes', PROPERTY.notes || '');
+
+  var sameBuilding = el('c-same-building');
+  if (sameBuilding) COMP_FLAGS.sameBuilding = sameBuilding.checked;
+
+  // Capture any comp row edits that are still focused and not yet committed by onchange.
+  var rows = document.querySelectorAll('#comp-edit-list .comp-edit-row');
+  rows.forEach(function(row, idx) {
+    if (!COMPS[idx]) return;
+    var inputs = row.querySelectorAll('input');
+    if (inputs[0]) COMPS[idx].url = inputs[0].value;
+    if (inputs[1]) COMPS[idx].name = inputs[1].value;
+    if (inputs[2]) {
+      var r = parseFloat(inputs[2].value);
+      COMPS[idx].rate_usd = isNaN(r) ? null : r;
+    }
+    if (inputs[3]) {
+      var rating = parseFloat(inputs[3].value);
+      COMPS[idx].rating = isNaN(rating) ? null : rating;
+    }
+  });
+}
+
 function collectAppSettings() {
+  syncDomToAppState();
   return {
     CFG: JSON.parse(JSON.stringify(CFG)),
     PROPERTY: JSON.parse(JSON.stringify(PROPERTY)),
@@ -1947,7 +2004,8 @@ function renderAuthState() {
     controls.innerHTML = ''
       + '<button class="btn-sm" onclick="savePropertyForCurrentUser()">Save now</button>'
       + '<button class="btn-sm" onclick="savePropertyAsNew()">Save as new</button>'
-      + '<button class="btn-sm" onclick="signOutUser()">Sign out</button>';
+      + '<button class="btn-sm" onclick="signOutUser()">Sign out</button>'
+      + '<span id="autosave-status" style="font-size:9px;color:var(--ink3);align-self:center">Autosave ready</span>';
   } else {
     status.textContent = 'Not signed in';
     controls.innerHTML = ''
@@ -1978,6 +2036,8 @@ async function refreshSavedPropertiesList() {
 
 async function savePropertyForCurrentUser(customSlug, customName) {
   if (!supabaseClient || !AUTH_STATE.user) return alert('Please sign in first.');
+  var statusEl = document.getElementById('autosave-status');
+  if (statusEl) statusEl.textContent = 'Saving...';
   var slug = customSlug || AUTH_STATE.currentSlug || slugifyProperty();
   AUTH_STATE.currentSlug = slug;
   var name = customName || getCurrentPropertyName();
@@ -1994,9 +2054,11 @@ async function savePropertyForCurrentUser(customSlug, customName) {
 
   if (result.error) {
     console.error(result.error);
+    if (statusEl) statusEl.textContent = 'Save failed';
     alert('Save failed: ' + result.error.message);
     return;
   }
+  if (statusEl) statusEl.textContent = 'Saved ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   await refreshSavedPropertiesList();
 }
 
@@ -2043,10 +2105,17 @@ function loadSelectedPropertyFromAccount() {
 
 function scheduleAutoSave() {
   if (!AUTH_STATE.user || AUTH_STATE.isApplying) return;
+  syncDomToAppState();
+  var statusEl = document.getElementById('autosave-status');
+  if (statusEl) statusEl.textContent = 'Unsaved changes...';
   clearTimeout(AUTH_STATE.autosaveTimer);
   AUTH_STATE.autosaveTimer = setTimeout(function(){
-    savePropertyForCurrentUser().catch(function(err){ console.error(err); });
-  }, 1200);
+    savePropertyForCurrentUser().catch(function(err){
+      console.error(err);
+      var el = document.getElementById('autosave-status');
+      if (el) el.textContent = 'Save failed';
+    });
+  }, 900);
 }
 
 async function ensureCurrentPropertyExists() {
@@ -2118,16 +2187,30 @@ async function bootAuth() {
     }
   });
 
-  document.addEventListener('input', function(){ scheduleAutoSave(); });
+  document.addEventListener('input', function(event){
+    var target = event.target;
+    if (!target || target.id === 'saved-property-select') return;
+    if (target.matches && target.matches('input, select, textarea')) {
+      scheduleAutoSave();
+    }
+  });
   document.addEventListener('change', function(event){
-    scheduleAutoSave();
     var target = event.target;
     if (!target) return;
-    // Any variable change should update table, dashboard, and chart immediately.
+    // Any variable change should save, update table, dashboard, and chart immediately.
     // Skip property selector because loading a property handles its own render path.
     if (target.id === 'saved-property-select') return;
     if (target.matches && target.matches('input, select, textarea')) {
+      syncDomToAppState();
       window.setTimeout(function(){ recalculateAllViews(); }, 0);
+    }
+  });
+  document.addEventListener('click', function(event){
+    var target = event.target;
+    if (!target || target.id === 'saved-property-select') return;
+    // Buttons/chips can mutate arrays like YEARS, peaks, amenities, or COMPS.
+    if (target.closest && target.closest('button, .amenity-chip')) {
+      window.setTimeout(function(){ scheduleAutoSave(); }, 0);
     }
   });
 }
