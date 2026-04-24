@@ -217,7 +217,7 @@ console.log("CONFIG:", window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 <!-- SUMMARY -->
 <div class="summary" id="summary"></div>
-<div class="chart-panel"><div class="chart-card"><div class="chart-title">Revenue & Net Income Trend</div><div class="chart-wrap"><canvas id="financialChart"></canvas></div></div></div>
+<div class="chart-panel"><div class="chart-card"><div class="chart-title">Current Year Monthly Net Income</div><div class="chart-wrap"><canvas id="financialChart"></canvas></div></div></div>
 
 <!-- LEGEND -->
 <div class="leg">
@@ -1443,32 +1443,79 @@ function renderSummary(rows, totalRev, v) {
 function renderFinancialChart(rows) {
   var canvas = document.getElementById('financialChart');
   if (!canvas || typeof Chart === 'undefined') return;
-  var years = (currentTab === 'all') ? YEARS : YEARS.filter(function(y){ return y.year === currentTab; });
-  var labels = years.map(function(y){ return String(y.year); });
-  var revenue = years.map(function(y){
-    return rows.filter(function(r){ return r.year === y.year; }).reduce(function(sum, r){ return sum + r.yourCOP; }, 0);
+
+  // Chart is focused on the currently selected year.
+  // In All Years view, use the active year context.
+  var chartYear = (currentTab === 'all') ? activePeakYear : currentTab;
+  if (chartYear === 'all' || chartYear === undefined || chartYear === null) {
+    chartYear = YEARS.length ? YEARS[0].year : new Date().getFullYear();
+  }
+
+  var yearRows = rows.filter(function(r){ return r.year === chartYear; });
+  if (!yearRows.length && Array.isArray(latestRows)) {
+    yearRows = latestRows.filter(function(r){ return r.year === chartYear; });
+  }
+
+  var monthlyRevenue = new Array(12).fill(0);
+  yearRows.forEach(function(r){
+    var m = r.start.getMonth();
+    monthlyRevenue[m] += r.yourCOP || 0;
   });
-  var net = years.map(function(y, idx){
-    var rev = revenue[idx] || 0;
-    var annualOp = getYearMonthlyOperatingExpenses(y.year) * 12;
-    var annualOther = getYearMonthlyOtherIncome(y.year) * 12;
-    return rev + annualOther - annualOp;
+
+  var monthlyOp = getYearMonthlyOperatingExpenses(chartYear);
+  var monthlyOther = getYearMonthlyOtherIncome(chartYear);
+
+  var monthlyNet = monthlyRevenue.map(function(rev){
+    return rev + monthlyOther - monthlyOp;
   });
+
+  var runningNet = [];
+  monthlyNet.reduce(function(sum, value, idx){
+    var next = sum + value;
+    runningNet[idx] = next;
+    return next;
+  }, 0);
+
+  var labels = MONTHS_SHORT.map(function(m){ return m + ' ' + chartYear; });
+
   if (window.financialChartInstance) window.financialChartInstance.destroy();
   window.financialChartInstance = new Chart(canvas, {
     type: 'line',
     data: {
       labels: labels,
       datasets: [
-        { label: 'Estimated Revenue (COP)', data: revenue, tension: 0.25 },
-        { label: 'Net Income (COP)', data: net, tension: 0.25 }
+        { label: 'Monthly Net Income (COP)', data: monthlyNet, tension: 0.25 },
+        { label: 'Running Net Income (COP)', data: runningNet, tension: 0.25 }
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
-      scales: { y: { ticks: { callback: function(value){ return new Intl.NumberFormat('es-CO', { notation:'compact' }).format(value); } } } }
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var cop = ctx.parsed.y || 0;
+              var fx = getYearVals(chartYear).fx || getVals().fx || 3500;
+              return ctx.dataset.label + ': ' + fc(cop) + ' COP · ' + fu(cop / fx) + ' USD';
+            }
+          }
+        },
+        title: {
+          display: true,
+          text: 'Monthly net income and running net income — ' + chartYear
+        }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: function(value){
+              return new Intl.NumberFormat('es-CO', { notation:'compact' }).format(value);
+            }
+          }
+        }
+      }
     }
   });
 }
